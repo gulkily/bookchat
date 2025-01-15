@@ -40,28 +40,29 @@
         </div>
 
         <!-- Messages container -->
-        <div id="messages">
-            <!-- No-JS refresh form -->
-            <form method="GET" action="/" class="nojs-only refresh-form">
-                <button type="submit">Refresh Messages</button>
-            </form>
-            <div id="messages-container">
-                <p>Loading messages...</p>
+        <div class="chat-container">
+            <div id="pinned-messages" class="pinned-messages-section"></div>
+            <div id="messages" class="messages-section">
+                <!-- No-JS refresh form -->
+                <form method="GET" action="/" class="nojs-only refresh-form">
+                    <button type="submit">Refresh Messages</button>
+                </form>
+                <div id="messages-container">
+                    <p>Loading messages...</p>
+                </div>
             </div>
-        </div>
-
-        <!-- Message input -->
-        <div class="message-form">
-            <!-- No-JS message form -->
-            <form id="message-form" method="POST" action="/messages" class="message-input-container nojs-only">
-                <textarea name="content" placeholder="Type your message here..." rows="1" required></textarea>
-                <button type="submit">Send</button>
-            </form>
-            <!-- JS message form -->
-            <form id="js-message-form" class="message-input-container js-only">
-                <textarea id="message-input" placeholder="Type your message here..." rows="1" required></textarea>
-                <button type="submit" id="send-button">Send</button>
-            </form>
+            <div class="input-section">
+                <!-- No-JS message form -->
+                <form id="message-form" method="POST" action="/messages" class="message-input-container nojs-only">
+                    <textarea name="content" placeholder="Type your message here..." rows="1" required></textarea>
+                    <button type="submit">Send</button>
+                </form>
+                <!-- JS message form -->
+                <form id="js-message-form" class="message-input-container js-only">
+                    <textarea id="message-input" placeholder="Type your message here..." rows="1" required></textarea>
+                    <button type="submit" id="send-button">Send</button>
+                </form>
+            </div>
         </div>
 
         <div id="global-verification-status" style="display: none;">

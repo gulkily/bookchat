@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class GitStorage(StorageBackend):
     """Storage backend that uses Git repository for message storage."""
     
-    def __init__(self, repo_path: str):
+    def __init__(self, repo_path: str, **kwargs):
         """Initialize the Git storage backend.
         
         Args:
@@ -29,6 +29,7 @@ class GitStorage(StorageBackend):
         logger.info(f"Initializing GitStorage with repo_path: {repo_path}")
         self.repo_path = Path(repo_path)
         self.messages_dir = self.repo_path / 'messages'
+        self.pinned_file = self.repo_path / 'pinned_messages.json'
         self.git_manager = GitManager(str(repo_path))
         
         # Initialize key manager with the same key directories as git manager
@@ -67,34 +68,90 @@ class GitStorage(StorageBackend):
         except Exception as e:
             logger.error(f"Failed to check Git status: {e}")
         
-    def init_storage(self) -> bool:
-        """Initialize the storage by creating necessary directories."""
+        self.init_storage()
+
+    def init_storage(self):
+        """Initialize the storage by creating necessary directories"""
+        self.messages_dir.mkdir(parents=True, exist_ok=True)
+        if not self.pinned_file.exists():
+            self._save_pinned_messages({})
+
+    def _save_pinned_messages(self, pinned_data: Dict):
+        """Save pinned messages data to JSON file"""
+        with open(self.pinned_file, 'w') as f:
+            json.dump(pinned_data, f, indent=2)
+
+    def _load_pinned_messages(self) -> Dict:
+        """Load pinned messages data from JSON file"""
+        if not self.pinned_file.exists():
+            return {}
         try:
-            # Create messages directory if it doesn't exist
-            logger.debug(f"Ensuring messages directory exists: {self.messages_dir}")
-            os.makedirs(self.messages_dir, exist_ok=True)
+            with open(self.pinned_file, 'r') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            return {}
+
+    def pin_message(self, message_id: str, pinned_by: str) -> bool:
+        """Pin a message"""
+        try:
+            # Load current pinned messages
+            pinned_data = self._load_pinned_messages()
             
-            # Initialize git and pull latest changes
-            if self.git_manager.use_github:
-                self.git_manager.pull_from_github()
-            
-            # Check if directory was created successfully
-            if not self.messages_dir.exists():
-                logger.error("Failed to create messages directory")
+            # Check if message exists
+            message = self.get_message_by_id(message_id)
+            if not message:
                 return False
-            
-            # Check directory permissions
-            logger.debug(f"Messages directory permissions: {oct(os.stat(self.messages_dir).st_mode)}")
-            
-            # List directory contents
-            logger.debug(f"Messages directory contents: {list(self.messages_dir.glob('*'))}")
-            
-            logger.info("Storage initialized successfully")
+
+            # Add to pinned messages
+            pinned_data[message_id] = {
+                'pinned_at': datetime.now().isoformat(),
+                'pinned_by': pinned_by
+            }
+
+            # Save updated pinned messages
+            self._save_pinned_messages(pinned_data)
             return True
-        except Exception as e:
-            logger.error(f"Failed to initialize storage: {e}\n{traceback.format_exc()}")
+        except Exception:
             return False
-    
+
+    def unpin_message(self, message_id: str, unpinned_by: str) -> bool:
+        """Unpin a message"""
+        try:
+            # Load current pinned messages
+            pinned_data = self._load_pinned_messages()
+            
+            # Remove from pinned messages if exists
+            if message_id in pinned_data:
+                del pinned_data[message_id]
+                self._save_pinned_messages(pinned_data)
+                return True
+            return False
+        except Exception:
+            return False
+
+    def get_pinned_messages(self) -> List[Dict]:
+        """Retrieve all pinned messages"""
+        try:
+            # Load pinned messages data
+            pinned_data = self._load_pinned_messages()
+            
+            # Get all pinned message details
+            pinned_messages = []
+            for message_id, pin_info in pinned_data.items():
+                message = self.get_message_by_id(message_id)
+                if message:
+                    message.update({
+                        'is_pinned': True,
+                        'pinned_at': pin_info['pinned_at'],
+                        'pinned_by': pin_info['pinned_by']
+                    })
+                    pinned_messages.append(message)
+            
+            # Sort by pinned_at timestamp
+            return sorted(pinned_messages, key=lambda x: x['pinned_at'], reverse=True)
+        except Exception:
+            return []
+
     def save_message(self, user: str, content: str, timestamp: datetime, sign: bool = True) -> bool:
         """Save a new message to the Git repository.
         
@@ -204,47 +261,43 @@ class GitStorage(StorageBackend):
             logger.error(f"Error saving message: {e}\n{traceback.format_exc()}")
             return False
     
-    def get_messages(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Retrieve messages from the Git repository.
-        
-        Args:
-            limit: Optional maximum number of messages to retrieve
-        
-        Returns:
-            List of message dictionaries
-        """
-        # Pull latest changes once at the start
-        if self.git_manager.use_github:
-            self.git_manager.pull_from_github()
-            
-        messages = []
-        
-        # List all files in messages directory
+    def get_messages(self, limit: Optional[int] = None) -> List[Dict]:
+        """Retrieve messages from the Git repository"""
         try:
-            message_files = sorted(
-                [f for f in self.messages_dir.glob('*.txt') if f.is_file()],
-                key=lambda x: x.stat().st_mtime,
-                reverse=True
-            )
-        except Exception as e:
-            logger.error(f"Failed to list messages directory: {e}")
-            return messages
+            messages = []
+            pinned_data = self._load_pinned_messages()
             
-        # Process each message file
-        for message_file in message_files:
-            try:
-                # Don't pull for each message, we already pulled at the start
-                message = self.git_manager.read_message(message_file.name, skip_pull=True)
-                if message:  # Skip None results (e.g. .gitkeep)
-                    messages.append(message)
-                    if limit and len(messages) >= limit:
-                        break
-            except Exception as e:
-                logger.error(f"Failed to read message {message_file}: {e}")
-                # Continue processing other messages
-                continue
-                
-        return messages
+            # Get all message files
+            message_files = sorted(self.messages_dir.glob('*.txt'), reverse=True)
+            if limit:
+                message_files = message_files[:limit]
+
+            # Load each message and add pinned status
+            for file_path in message_files:
+                try:
+                    with open(file_path, 'r') as f:
+                        content = f.read()
+                        message = self._parse_message_content(content, file_path.stem)
+                        if message:
+                            # Add pinned status and info if pinned
+                            message_id = str(message['id'])
+                            if message_id in pinned_data:
+                                message.update({
+                                    'is_pinned': True,
+                                    'pinned_at': pinned_data[message_id]['pinned_at'],
+                                    'pinned_by': pinned_data[message_id]['pinned_by']
+                                })
+                            else:
+                                message['is_pinned'] = False
+                            messages.append(message)
+                except Exception as e:
+                    logger.error(f"Error reading message file {file_path}: {e}")
+                    continue
+
+            return messages
+        except Exception as e:
+            logger.error(f"Error getting messages: {e}")
+            return []
 
     def get_message_by_id(self, message_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve a specific message by ID.

@@ -784,3 +784,64 @@ body {
     align-items: center;
     gap: 8px;
 }
+
+/* Pinned messages section */
+#pinned-messages {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #e9ecef;
+}
+
+#pinned-messages h3 {
+    color: #495057;
+    margin: 0 0 15px 0;
+    font-size: 1.1em;
+    display: flex;
+    align-items: center;
+}
+
+#pinned-messages h3::before {
+    content: '📌';
+    margin-right: 8px;
+}
+
+/* Message pin button */
+.pin-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 1.2em;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.pin-button:hover {
+    opacity: 1;
+}
+
+/* Pinned message styling */
+.message.pinned {
+    background-color: #fff8dc;
+    border-left: 3px solid #ffd700;
+}
+
+.pinned-by {
+    font-size: 0.8em;
+    color: #6c757d;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+/* Animation for pinning/unpinning */
+@keyframes pin-message {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.message.pinned {
+    animation: pin-message 0.3s ease;
+}
