@@ -1,5 +1,15 @@
 // BookChat JavaScript (2025-01-08T12:20:30-05:00)
 
+// HTML escaping function
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 let currentUsername = 'anonymous';
 let messageVerificationEnabled = false;
 
@@ -9,6 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupMessageInput();
     setupUsernameUI();
     await loadMessages();
+    await loadPinnedMessages();
 });
 
 async function verifyUsername() {
@@ -40,48 +51,35 @@ async function verifyUsername() {
 
 async function loadMessages() {
     try {
-        const response = await fetch('/messages');
+        const response = await fetch('/api/messages');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
-        let messages = data.messages;
-        messageVerificationEnabled = data.messageVerificationEnabled;
+        const messages = data.messages || [];
+        currentUsername = data.currentUsername || 'anonymous';
+        messageVerificationEnabled = data.messageVerificationEnabled || false;
         
-        // Filter out unverified messages when verification is enabled
-        if (messageVerificationEnabled) {
-            messages = messages.filter(message => message.verified && message.verified.toLowerCase() === 'true');
-        }
-        
-        const messagesDiv = document.getElementById('messages');
         const messagesContainer = document.getElementById('messages-container');
         messagesContainer.innerHTML = '';
         
-        // Sort messages by date (newest at bottom)
-        messages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        messages.reverse();
-        
         // Add messages to container
-        for (const message of messages) {
+        messages.forEach(message => {
             messagesContainer.appendChild(createMessageElement(message));
-        }
+        });
         
         // Scroll to bottom
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        
-        // Update current username
-        if (data.currentUsername) {
-            currentUsername = data.currentUsername;
-            localStorage.setItem('username', currentUsername);
-            const usernameDisplay = document.getElementById('current-username');
-            if (usernameDisplay) {
-                usernameDisplay.textContent = `Current username: ${currentUsername}`;
-            }
+        const messagesDiv = document.getElementById('messages');
+        if (messagesDiv) {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
         
-        // Update verification status
-        updateGlobalVerificationStatus();
+        // Update username display
+        const usernameDisplay = document.getElementById('current-username');
+        if (usernameDisplay) {
+            usernameDisplay.textContent = `Current username: ${currentUsername}`;
+        }
     } catch (error) {
         console.error('Error loading messages:', error);
     }
@@ -103,7 +101,7 @@ function createMessageElement(message) {
     // Add author name
     const authorSpan = document.createElement('span');
     authorSpan.className = 'author';
-    authorSpan.textContent = message.author || 'anonymous';
+    authorSpan.textContent = escapeHtml(message.author || 'anonymous');
     leftSection.appendChild(authorSpan);
     
     // Add verification status if enabled
@@ -164,7 +162,7 @@ function createMessageElement(message) {
     // Add message content
     const content = document.createElement('div');
     content.className = 'content';
-    content.textContent = message.content;
+    content.textContent = escapeHtml(message.content);
     messageDiv.appendChild(content);
     
     return messageDiv;
@@ -184,19 +182,25 @@ async function sendMessage(content, type = 'message') {
 
         // Immediately add message to UI
         const messagesContainer = document.getElementById('messages-container');
-        messagesContainer.appendChild(createMessageElement(tempMessage));
+        const messageElement = createMessageElement(tempMessage);
+        messagesContainer.appendChild(messageElement);
         
         // Scroll to bottom
         const messagesDiv = document.getElementById('messages');
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        if (messagesDiv) {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
 
         // Send to server
-        const response = await fetch('/messages', {
+        const response = await fetch('/api/messages', {
             method: 'POST',
             headers: {
-                'Content-Type': 'text/plain'
+                'Content-Type': 'application/json'
             },
-            body: content
+            body: JSON.stringify({
+                content: content,
+                type: type
+            })
         });
         
         if (!response.ok) {
@@ -205,69 +209,20 @@ async function sendMessage(content, type = 'message') {
         
         const result = await response.json();
         
-        // Update the pending message with the real data
-        const pendingMessage = document.querySelector(`[data-message-id="${tempMessage.id}"]`);
-        if (pendingMessage) {
-            // Update message ID
-            pendingMessage.dataset.messageId = result.id;
-            
-            // Update the timestamp
-            const timestamp = pendingMessage.querySelector('.timestamp');
-            if (timestamp) {
-                const messageDate = new Date(result.createdAt);
-                timestamp.textContent = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                timestamp.title = messageDate.toLocaleString();
-                timestamp.classList.remove('pending');
-            }
-            
-            // Add verification status if needed
-            if (messageVerificationEnabled) {
-                const leftSection = pendingMessage.querySelector('.header-left');
-                const verificationStatus = document.createElement('span');
-                verificationStatus.className = 'verification-status';
-                
-                if (result.verified && result.verified.toLowerCase() === 'true') {
-                    verificationStatus.className += ' verified';
-                    verificationStatus.title = 'Message verified';
-                    verificationStatus.innerHTML = '&#10003;';
-                } else if (result.signature) {
-                    verificationStatus.className += ' pending';
-                    verificationStatus.title = 'Verification pending';
-                    verificationStatus.innerHTML = '&#8943;';
-                } else {
-                    verificationStatus.className += ' unverified';
-                    verificationStatus.title = 'Message not verified';
-                    verificationStatus.innerHTML = '&#33;';
-                }
-                leftSection.insertBefore(verificationStatus, leftSection.firstChild);
-            }
-            
-            // Add source file link if needed
-            if (result.file && messageVerificationEnabled) {
-                const rightSection = pendingMessage.querySelector('.header-right');
-                const sourceLink = document.createElement('a');
-                sourceLink.className = 'source-link';
-                sourceLink.href = `/messages/${result.file.split('/').pop()}`;
-                sourceLink.textContent = '&#128273;';
-                sourceLink.title = 'View message source file';
-                sourceLink.target = '_blank';
-                rightSection.appendChild(sourceLink);
-            }
-        }
+        // Remove the temporary message
+        messageElement.remove();
         
+        // Add the real message from the server
+        messagesContainer.appendChild(createMessageElement(result));
+        
+        // Scroll to bottom again
+        if (messagesDiv) {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
         return result;
     } catch (error) {
         console.error('Error sending message:', error);
-        // Update pending message to show error
-        const pendingMessage = document.querySelector(`[data-message-id="${tempMessage.id}"]`);
-        if (pendingMessage) {
-            const timestamp = pendingMessage.querySelector('.timestamp');
-            if (timestamp) {
-                timestamp.className = 'timestamp error';
-                timestamp.textContent = 'Failed to send';
-                timestamp.title = 'Message failed to send';
-            }
-        }
         throw error;
     }
 }
@@ -443,6 +398,128 @@ function updateGlobalVerificationStatus() {
         globalStatus.classList.add('unverified');
         globalStatus.textContent = 'Chat Verification Status: No Messages Verified';
     }
+}
+
+// Pin/unpin message
+async function toggleMessagePin(messageId, isPinned) {
+    try {
+        const response = await fetch(`/api/messages/${messageId}/pin`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: isPinned ? 'unpin' : 'pin'
+            })
+        });
+
+        if (response.ok) {
+            // Refresh messages to show updated pin status
+            await loadMessages();
+            await loadPinnedMessages();
+        } else {
+            console.error('Failed to toggle message pin');
+        }
+    } catch (error) {
+        console.error('Error toggling message pin:', error);
+    }
+}
+
+async function loadPinnedMessages() {
+    try {
+        const response = await fetch('/api/messages/pinned');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const pinnedMessages = data.messages || [];
+        
+        const pinnedSection = document.getElementById('pinned-messages');
+        if (!pinnedSection) {
+            console.warn('Pinned messages section not found in DOM');
+            return;
+        }
+        
+        pinnedSection.innerHTML = '';
+        
+        if (pinnedMessages.length > 0) {
+            pinnedSection.style.display = 'block';
+            const header = document.createElement('h3');
+            header.textContent = 'Pinned Messages';
+            pinnedSection.appendChild(header);
+            
+            pinnedMessages.forEach(message => {
+                const messageElement = createMessageElement(message, true);
+                pinnedSection.appendChild(messageElement);
+            });
+        } else {
+            pinnedSection.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error loading pinned messages:', error);
+    }
+}
+
+// Create message element
+function createMessageElement(message, isPinned = false) {
+    const div = document.createElement('div');
+    div.className = `message ${message.is_pinned ? 'pinned' : ''}`;
+    div.setAttribute('data-message-id', message.id);
+
+    // Add pin/unpin button
+    const pinButton = document.createElement('button');
+    pinButton.className = 'pin-button';
+    pinButton.innerHTML = message.is_pinned ? '&#128204;' : '&#128203;';
+    pinButton.title = message.is_pinned ? 'Unpin message' : 'Pin message';
+    pinButton.onclick = (e) => {
+        e.preventDefault();
+        toggleMessagePin(message.id, message.is_pinned);
+    };
+
+    // Add message content
+    const content = document.createElement('div');
+    content.className = 'message-content';
+    content.innerHTML = `
+        <span class="username">${escapeHtml(message.user)}</span>
+        <span class="timestamp">${new Date(message.timestamp).toLocaleString()}</span>
+        <div class="text">${escapeHtml(message.content)}</div>
+    `;
+
+    if (message.is_pinned) {
+        const pinnedBy = document.createElement('div');
+        pinnedBy.className = 'pinned-by';
+        pinnedBy.textContent = `Pinned by ${message.pinned_by}`;
+        content.appendChild(pinnedBy);
+    }
+
+    div.appendChild(pinButton);
+    div.appendChild(content);
+    return div;
+}
+
+// Initialize chat
+async function initChat() {
+    await loadMessages();
+    await loadPinnedMessages();
+    setupMessageInput();
+    setupKeyboardShortcuts();
+}
+
+// Setup keyboard shortcuts
+function setupKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        // Ctrl/Cmd + P to pin/unpin selected message
+        if ((e.ctrlKey || e.metaKey) && e.key === 'p' && !e.shiftKey) {
+            e.preventDefault();
+            const selectedMessage = document.querySelector('.message.selected');
+            if (selectedMessage) {
+                const messageId = selectedMessage.getAttribute('data-message-id');
+                const isPinned = selectedMessage.classList.contains('pinned');
+                toggleMessagePin(messageId, isPinned);
+            }
+        }
+    });
 }
 
 // Username validation regex - only allow alphanumeric and underscore, 3-20 chars
