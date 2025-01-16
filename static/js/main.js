@@ -84,7 +84,16 @@ class ChatApp {
                 throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
             }
             
-            const result = await response.json();
+            let result;
+            try {
+                result = await response.json();
+            } catch (jsonError) {
+                console.error('JSON parsing error:', jsonError);
+                const responseText = await response.text();
+                console.error('Response text:', responseText);
+                throw new Error(`Failed to parse JSON: ${jsonError.message}`);
+            }
+            
             console.log('Parsed server response:', result);
             
             if (!result.success) {
