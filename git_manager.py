@@ -221,53 +221,50 @@ class GitManager:
         if not self.use_github:
             logger.debug("GitHub sync disabled, skipping")
             return
-        
+
         try:
             # Ensure filepath is a Path object
             filepath = Path(filepath) if not isinstance(filepath, Path) else filepath
-            
+
             # Check if the file exists before trying to sync
             if not filepath.exists():
                 logger.warning(f"Warning: File {filepath} does not exist, skipping GitHub sync")
                 return
-            
+
             # Stage the file
             relative_path = filepath.relative_to(self.repo_path)
             self._run_git_command(['git', 'add', str(relative_path)])
-            
+
             # Check if there are any changes to commit
             status = subprocess.run(
                 ['git', 'status', '--porcelain', str(relative_path)],
                 cwd=str(self.repo_path),
                 capture_output=True,
-                text=True,
+                text=False,  # Get bytes output
                 check=True
             )
-            
+
             # Check for modified or untracked files
-            status_output = status.stdout.strip()
+            status_output = status.stdout.decode('utf-8').strip()
             if not status_output or not any(line.startswith(('M', 'A', '??')) for line in status_output.split('\n')):
                 logger.debug(f"No changes to commit for {relative_path}")
                 return
-            
-            # Use appropriate commit message based on file type
-            if 'messages' in str(relative_path):
-                commit_message = f'Add message from {author}'
-            elif 'identity/public_keys' in str(relative_path):
-                commit_message = f'Update user key for {author}'
-            else:
-                commit_message = f'Update {relative_path} by {author}'
-            
-            # Commit the change
+
+            # Commit changes
+            commit_message = f"Update by {author}"
             self._run_git_command(['git', 'commit', '-m', commit_message])
-            
-            # Push to GitHub
-            self._run_git_command(['git', 'push', 'origin', 'main'])
-            logger.info(f"Successfully synced {relative_path} to GitHub")
-            
-        except subprocess.CalledProcessError as e:
+
+            # Push to GitHub if enabled
+            if self.use_github:
+                self._run_git_command(['git', 'push', 'origin', 'main'])
+                logger.info(f"Successfully pushed changes to GitHub for {relative_path}")
+
+                # Sync with forks if enabled
+                self.sync_with_forks()
+
+        except Exception as e:
             logger.error(f"Error syncing to GitHub: {e}")
-            # Continue without GitHub sync - don't raise the error
+            raise
 
     def sync_forks(self):
         """Sync with all forks listed in forks_list.txt."""
