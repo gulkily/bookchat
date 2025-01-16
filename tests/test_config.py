@@ -1,6 +1,7 @@
 """Tests for server configuration."""
 
 import pytest
+import os
 from server import config
 
 def test_default_config():
@@ -9,8 +10,8 @@ def test_default_config():
     assert config.PORT >= 0
     assert isinstance(config.REPO_PATH, str)
     assert isinstance(config.MESSAGE_VERIFICATION_ENABLED, bool)
-    assert config.STATIC_DIR == "static"
-    assert config.TEMPLATE_DIR == "templates"
+    assert os.path.basename(config.STATIC_DIR) == "static"
+    assert os.path.basename(config.TEMPLATE_DIR) == "templates"
     assert config.DEFAULT_STORAGE_TYPE == "git"
 
 def test_env_config(mock_env):

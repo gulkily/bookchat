@@ -8,6 +8,7 @@ from server.handler_methods import serve_messages, verify_username, serve_status
 from server.handler import ChatRequestHandler
 from pathlib import Path
 from datetime import datetime
+import asyncio
 
 def send_json_response(handler, data):
     """Helper to send JSON response."""
@@ -38,7 +39,8 @@ def mock_handler():
     
     return handler
 
-def test_serve_messages(mock_handler, tmp_path):
+@pytest.mark.asyncio
+async def test_serve_messages(mock_handler, tmp_path):
     """Test serving message list."""
     with patch('server.config.REPO_PATH', tmp_path):
         # Create test messages
@@ -47,7 +49,7 @@ def test_serve_messages(mock_handler, tmp_path):
         (messages_dir / 'test1.txt').touch()
         (messages_dir / 'test2.txt').touch()
 
-        serve_messages(mock_handler)
+        await serve_messages(mock_handler)
 
         # Verify response headers
         mock_handler.send_response.assert_called_with(200)

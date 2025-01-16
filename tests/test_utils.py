@@ -3,6 +3,8 @@
 import pytest
 from unittest.mock import patch
 from server.utils import find_available_port, ensure_directories
+import os
+from server.config import REPO_PATH
 
 def test_find_available_port():
     """Test finding an available port."""
@@ -19,7 +21,10 @@ def test_find_available_port_no_ports():
 
 def test_ensure_directories():
     """Test directory creation."""
-    with patch('pathlib.Path.mkdir') as mock_mkdir:
+    with patch('os.makedirs') as mock_makedirs:
         ensure_directories()
-        assert mock_mkdir.call_count > 0
-        mock_mkdir.assert_called_with(parents=True, exist_ok=True)
+        assert mock_makedirs.call_count > 0
+        mock_makedirs.assert_called_with(
+            os.path.join(REPO_PATH, 'identity/public_keys'),
+            exist_ok=True
+        )
