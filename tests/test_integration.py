@@ -4,6 +4,8 @@ import os
 import threading
 import time
 from pathlib import Path
+from datetime import datetime
+import logging
 
 import pytest
 import requests
@@ -26,11 +28,11 @@ def server_dirs(tmp_path):
     """Create test directories."""
     # Create required directories
     static_dir = tmp_path / 'static'
-    static_dir.mkdir(parents=True)
+    static_dir.mkdir(parents=True, exist_ok=True)
     db_dir = tmp_path / 'db'
-    db_dir.mkdir(parents=True)
+    db_dir.mkdir(parents=True, exist_ok=True)
     messages_dir = tmp_path / 'messages'
-    messages_dir.mkdir(parents=True)
+    messages_dir.mkdir(parents=True, exist_ok=True)
     return tmp_path
 
 @pytest.fixture
@@ -41,22 +43,80 @@ def mock_git_commands():
         yield mock_run
 
 @pytest.fixture
-def running_server(server_port, server_dirs, mock_git_commands, monkeypatch):
+def running_server(tmp_path, server_port, mock_git_commands, monkeypatch):
     """Start a test server in a separate thread."""
     # Set up test environment
     monkeypatch.setenv('PORT', str(server_port))
-    monkeypatch.setenv('REPO_PATH', str(server_dirs))
-    monkeypatch.setenv('STATIC_DIR', str(server_dirs / 'static'))
+    monkeypatch.setenv('REPO_PATH', str(tmp_path))
+    monkeypatch.setenv('STATIC_DIR', str(tmp_path / 'static'))
     monkeypatch.setenv('MESSAGE_VERIFICATION', 'false')
+
+    # Set up logging
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
+    root.addHandler(handler)
+
+    # Create required directories
+    (tmp_path / 'messages').mkdir()
+    (tmp_path / 'identity').mkdir()
+    (tmp_path / 'identity/public_keys').mkdir()
+    
+    # Create static directory and copy files
+    static_dir = tmp_path / 'static'
+    static_dir.mkdir()
+    (static_dir / 'css').mkdir()
+    (static_dir / 'js').mkdir()
+    
+    # Create index.html
+    with open(static_dir / 'index.html', 'w') as f:
+        f.write("""<!DOCTYPE html>
+<html>
+<head>
+    <title>BookChat</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div id="messages"></div>
+    <script src="/js/main.js"></script>
+</body>
+</html>""")
 
     # Mock storage backend
     mock_storage = MagicMock()
     mock_storage.get_messages.return_value = []
-
+    mock_storage.save_message = MagicMock()
+    mock_storage.verify_username = MagicMock(return_value=True)
+    
+    # Add message tracking to mock
+    stored_messages = []
+    def mock_save_message(content, username, timestamp):
+        # Create message content in Git-style format
+        message_content = f"{content}\n\n-- \nAuthor: {username}\nDate: {timestamp.isoformat()}\n"
+        
+        # Add to stored messages in parsed format
+        stored_messages.append({
+            'content': content,
+            'author': username,
+            'timestamp': timestamp.isoformat(),
+            'verified': 'true'
+        })
+        return True
+    def mock_get_messages():
+        # Return messages sorted by timestamp (newest first)
+        sorted_messages = sorted(stored_messages, key=lambda x: datetime.fromisoformat(x['timestamp']).replace(tzinfo=None), reverse=True)
+        return sorted_messages
+        
+    mock_storage.save_message.side_effect = mock_save_message
+    mock_storage.get_messages.side_effect = mock_get_messages
+    mock_storage.verify_username = MagicMock(return_value=True)
+    
     # Set up server with mocked dependencies
     with patch('storage.factory.create_storage', return_value=mock_storage), \
-         patch('server.config.REPO_PATH', server_dirs), \
-         patch('server.config.STATIC_DIR', str(server_dirs / 'static')), \
+         patch('server.config.REPO_PATH', tmp_path), \
+         patch('server.config.STATIC_DIR', str(tmp_path / 'static')), \
          patch('git_manager.Github'):
 
         # Start server in a thread
@@ -87,8 +147,11 @@ def test_server_startup(running_server):
 
 def test_static_file_serving(running_server, server_dirs):
     """Test serving static files."""
+    # Get static dir from environment
+    static_dir = os.environ.get('STATIC_DIR')
+    
     # Create a test file
-    test_file = server_dirs / 'static' / 'test.txt'
+    test_file = Path(static_dir) / 'test.txt'
     test_file.parent.mkdir(parents=True, exist_ok=True)
     test_file.write_text('test content')
 
@@ -134,7 +197,9 @@ def test_messages_appear_on_homepage(running_server):
     # Get messages from API
     response = requests.get(f'{running_server}/messages')
     assert response.status_code == 200, "Failed to get messages"
-    messages = response.json()['data']
+    response_data = response.json()
+    print(f"API Response: {response_data}")  # Debug print
+    messages = response_data['data']
     assert len(messages) > 0, "No messages returned from API"
     
     # Verify message content

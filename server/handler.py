@@ -5,18 +5,14 @@ import logging
 import mimetypes
 import socket
 import traceback
-from http.server import SimpleHTTPRequestHandler
+from datetime import datetime
+from http.server import BaseHTTPRequestHandler, SimpleHTTPRequestHandler
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List
 from urllib.parse import parse_qs, urlparse
 
-from server import config
-from server.handler_methods import (
-    serve_messages,
-    verify_username,
-    serve_status_page,
-    handle_message_post
-)
+from server.config import STATIC_DIR, REPO_PATH
+from server.utils import send_json_response
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +21,7 @@ class ChatRequestHandler(SimpleHTTPRequestHandler):
 
     def __init__(self, *args, **kwargs):
         # Set the directory for serving static files
-        super().__init__(*args, directory=config.STATIC_DIR, **kwargs)
+        super().__init__(*args, directory=STATIC_DIR, **kwargs)
 
     def log_error(self, format, *args):
         """Override to handle expected errors more gracefully."""
@@ -75,56 +71,6 @@ class ChatRequestHandler(SimpleHTTPRequestHandler):
                 
         return None
 
-    def serve_file(self, filepath: str) -> None:
-        """Serve a static file."""
-        try:
-            # Get absolute path within static directory
-            static_dir = Path(config.STATIC_DIR)
-            file_path = static_dir / filepath.lstrip('/')
-            
-            if not file_path.is_file() or not str(file_path).startswith(str(static_dir)):
-                self.handle_error(404, f"File not found: {filepath}")
-                return
-
-            # Determine content type
-            content_type, _ = mimetypes.guess_type(str(file_path))
-            if content_type is None:
-                content_type = 'application/octet-stream'
-
-            try:
-                # Read file content first to avoid partial headers
-                content = file_path.read_bytes()
-                
-                # Send headers
-                self.send_response(200)
-                self.send_header('Content-Type', content_type)
-                self.send_header('Content-Length', str(len(content)))
-                self.end_headers()
-                
-                # Send content in chunks to handle large files
-                chunk_size = 8192
-                for i in range(0, len(content), chunk_size):
-                    try:
-                        self.wfile.write(content[i:i + chunk_size])
-                    except (BrokenPipeError, ConnectionResetError):
-                        # Client disconnected, just return
-                        logger.debug(f"Client disconnected while serving file: {filepath}")
-                        return
-                    except socket.error as e:
-                        # Other socket errors
-                        logger.warning(f"Socket error while serving file {filepath}: {e}")
-                        return
-                        
-            except (BrokenPipeError, ConnectionResetError):
-                # Client disconnected before we could send anything
-                logger.debug(f"Client disconnected before serving file: {filepath}")
-            except Exception as e:
-                logger.error(f"Error reading or sending file: {e}")
-                self.handle_error(500, str(e))
-        except Exception as e:
-            logger.error(f"Error preparing to serve file {filepath}: {e}")
-            self.handle_error(500, str(e))
-
     def do_GET(self) -> None:
         """Handle GET requests."""
         try:
@@ -132,18 +78,39 @@ class ChatRequestHandler(SimpleHTTPRequestHandler):
             path = parsed_path.path
 
             if path == '/messages':
-                serve_messages(self)
+                self.handle_get_messages()
             elif path == '/verify_username':
+                from server.handler_methods import verify_username
                 verify_username(self)
             elif path == '/status':
+                from server.handler_methods import serve_status_page
                 serve_status_page(self)
-            elif path == '/':
-                self.serve_file('index.html')
             else:
-                self.serve_file(path.lstrip('/'))
+                # Use SimpleHTTPRequestHandler's file serving
+                logger.debug(f"Serving static file: {path}, directory: {self.directory}")
+                super().do_GET()
         except Exception as e:
             logger.error(f"Error handling GET request: {e}")
             self.handle_error(500, str(e))
+
+    def handle_get_messages(self) -> None:
+        """Handle GET /messages request."""
+        try:
+            messages = self.server.storage.get_messages()
+            logger.debug(f"Retrieved messages from storage: {messages}")
+            
+            # Format response
+            response = {
+                'success': True,
+                'data': messages,
+                'messageVerificationEnabled': False,
+                'reactionsEnabled': False
+            }
+            logger.debug(f"Sending response: {response}")
+            send_json_response(self, response)
+        except Exception as e:
+            logger.error(f"Error getting messages: {e}")
+            self.handle_error(500, "Error getting messages")
 
     def do_POST(self) -> None:
         """Handle POST requests."""
@@ -152,6 +119,7 @@ class ChatRequestHandler(SimpleHTTPRequestHandler):
             path = parsed_path.path
 
             if path == '/messages':
+                from server.handler_methods import handle_message_post
                 handle_message_post(self)
             else:
                 self.handle_error(404, f"Unknown endpoint: {path}")
