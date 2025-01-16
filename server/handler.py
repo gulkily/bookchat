@@ -62,6 +62,19 @@ class ChatRequestHandler(SimpleHTTPRequestHandler):
         except Exception as e:
             logger.error(f"Error in error handler: {e}")
 
+    def get_username_from_cookie(self) -> str:
+        """Get username from cookie or return None."""
+        cookies = self.headers.get('Cookie', '')
+        if not cookies:
+            return None
+            
+        for cookie in cookies.split(';'):
+            cookie = cookie.strip()
+            if cookie.startswith('username='):
+                return cookie[9:]  # Length of 'username='
+                
+        return None
+
     def serve_file(self, filepath: str) -> None:
         """Serve a static file."""
         try:
@@ -124,6 +137,8 @@ class ChatRequestHandler(SimpleHTTPRequestHandler):
                 verify_username(self)
             elif path == '/status':
                 serve_status_page(self)
+            elif path == '/':
+                self.serve_file('index.html')
             else:
                 self.serve_file(path.lstrip('/'))
         except Exception as e:

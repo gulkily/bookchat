@@ -109,3 +109,38 @@ def test_message_listing(running_server):
     assert 'data' in response_data
     assert isinstance(response_data['data'], list)
     assert 'messageVerificationEnabled' in response_data
+
+def test_messages_appear_on_homepage(running_server):
+    """Test that messages are displayed on the homepage."""
+    # First create a test message
+    test_message = "Test message for homepage display"
+    response = requests.post(
+        f'{running_server}/messages',
+        json={
+            'content': test_message,
+            'username': 'test_user',
+            'timestamp': '2025-01-16T11:21:31-05:00'  # Current time
+        }
+    )
+    assert response.status_code == 200, f"Failed to create message: {response.text}"
+    
+    # Get the homepage
+    response = requests.get(running_server)
+    assert response.status_code == 200, "Failed to get homepage"
+    
+    # Wait for messages to load via JavaScript
+    time.sleep(0.5)  # Give time for messages to load
+    
+    # Get messages from API
+    response = requests.get(f'{running_server}/messages')
+    assert response.status_code == 200, "Failed to get messages"
+    messages = response.json()['data']
+    assert len(messages) > 0, "No messages returned from API"
+    
+    # Verify message content
+    found_message = False
+    for message in messages:
+        if message['content'] == test_message and message['author'] == 'test_user':
+            found_message = True
+            break
+    assert found_message, "Test message not found in API response"

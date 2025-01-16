@@ -23,15 +23,36 @@ BookChat is a secure, signature-verified chat application that uses Git for mess
 - Archived messages are moved to `archive/` directory
 
 ### 2. Message Format
-Messages are stored as text files with the following format:
-```
-Date: YYYY-MM-DDTHH:mm:ss.SSSSSS
-Author: username
-Parent-Message: YYYYMMDD_HHMMSS_username.txt  # Optional, used for threaded messages
-Type: message|username_change|system|error
+Messages are stored in text files using a Git-style format with the following structure:
 
-message_content
 ```
+[message content]
+
+-- 
+Author: [username]
+Date: [ISO 8601 timestamp]
+```
+
+For backwards compatibility, the system also accepts messages in these formats:
+
+1. Legacy Git-style format (metadata first):
+```
+Author: [username]
+Date: [ISO 8601 timestamp]
+
+[message content]
+```
+
+2. JSON format:
+```json
+{
+  "user": "[username]",
+  "content": "[message content]",
+  "timestamp": "[ISO 8601 timestamp]"
+}
+```
+
+File naming convention: `YYYYMMDD_HHMMSS_username.txt`
 
 ### 3. Message Types
 1. **Regular Message** (`Type: message`)

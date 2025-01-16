@@ -238,3 +238,66 @@ def test_get_messages(mock_handler, tmp_path):
             assert msg['content'] == test_messages[i]['content']
             assert msg['author'] == test_messages[i]['username']
             assert msg['timestamp'] == test_messages[i]['timestamp'].isoformat()
+
+def test_serve_messages_output_format(mock_handler, tmp_path):
+    """Test that serve_messages returns correctly formatted data."""
+    with patch('server.config.REPO_PATH', tmp_path):
+        # Create test messages
+        test_messages = [
+            {
+                'content': 'Test message 1',
+                'author': 'user1',
+                'timestamp': '2025-01-16T11:24:05-05:00',
+                'verified': 'true'
+            },
+            {
+                'content': 'Test message 2',
+                'author': 'user2',
+                'timestamp': '2025-01-16T11:24:00-05:00',
+                'verified': 'true'
+            }
+        ]
+        
+        # Mock storage to return test messages
+        mock_storage = MagicMock()
+        mock_storage.get_messages.return_value = test_messages
+        mock_handler.server.storage = mock_storage
+        
+        # Mock handler methods
+        mock_handler.wfile = MagicMock()
+        mock_handler.send_response = MagicMock()
+        mock_handler.send_header = MagicMock()
+        mock_handler.end_headers = MagicMock()
+        
+        # Call serve_messages
+        from server.handler_methods import serve_messages
+        serve_messages(mock_handler)
+        
+        # Verify response format
+        mock_handler.send_response.assert_called_once_with(200)
+        mock_handler.send_header.assert_called_with('Content-Type', 'application/json')
+        mock_handler.end_headers.assert_called_once()
+        
+        # Get the JSON response that was written
+        write_call_args = mock_handler.wfile.write.call_args[0][0]
+        response_data = json.loads(write_call_args.decode('utf-8'))
+        
+        # Verify response structure
+        assert 'success' in response_data
+        assert response_data['success'] is True
+        assert 'data' in response_data
+        assert isinstance(response_data['data'], list)
+        assert len(response_data['data']) == 2
+        assert 'messageVerificationEnabled' in response_data
+        assert 'reactionsEnabled' in response_data
+        
+        # Verify message format
+        message = response_data['data'][0]
+        assert 'content' in message
+        assert 'author' in message
+        assert 'timestamp' in message
+        assert 'verified' in message
+        assert message['content'] == 'Test message 1'
+        assert message['author'] == 'user1'
+        assert message['timestamp'] == '2025-01-16T11:24:05-05:00'
+        assert message['verified'] == 'true'
