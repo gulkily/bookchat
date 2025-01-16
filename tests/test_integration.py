@@ -104,4 +104,8 @@ def test_message_listing(running_server):
     """Test listing messages."""
     response = requests.get(f'{running_server}/messages')
     assert response.status_code == 200
-    assert 'messages' in response.json()
+    response_data = response.json()
+    assert response_data['success'] is True
+    assert 'data' in response_data
+    assert isinstance(response_data['data'], list)
+    assert 'messageVerificationEnabled' in response_data

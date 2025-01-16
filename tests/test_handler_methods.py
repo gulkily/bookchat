@@ -46,21 +46,21 @@ def test_serve_messages(mock_handler, tmp_path):
         messages_dir.mkdir(parents=True)
         (messages_dir / 'test1.txt').touch()
         (messages_dir / 'test2.txt').touch()
-        
+
         serve_messages(mock_handler)
-        
+
         # Verify response headers
         mock_handler.send_response.assert_called_with(200)
         mock_handler.send_header.assert_called_with('Content-Type', 'application/json')
         mock_handler.end_headers.assert_called_once()
-        
+
         # Verify response content
         call_args = mock_handler.wfile.write.call_args[0][0]
         response = json.loads(call_args.decode('utf-8'))
-        assert 'messages' in response
-        assert len(response['messages']) == 2
-        assert 'test1.txt' in response['messages']
-        assert 'test2.txt' in response['messages']
+        assert response['success'] is True
+        assert 'data' in response
+        assert len(response['data']) == 2
+        assert 'messageVerificationEnabled' in response
 
 def test_verify_username(mock_handler):
     """Test username verification."""
