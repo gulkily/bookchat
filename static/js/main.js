@@ -216,23 +216,11 @@ class ChatApp {
                 this.messagesContainer.removeChild(this.messagesContainer.firstChild);
             }
             
-            // Sort messages chronologically (newest first)
-            const sortedMessages = [...this.state.messages].sort((a, b) => {
-                // Parse timestamps to Date objects for comparison
-                const dateA = new Date(a.timestamp);
-                const dateB = new Date(b.timestamp);
-                
-                // Check if dates are valid
-                if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
-                    console.error('Invalid timestamp found:', { a: a.timestamp, b: b.timestamp });
-                    return 0;
-                }
-                
-                return dateB.getTime() - dateA.getTime();
-            });
+            // Preserve original message order from server
+            const messages = [...this.state.messages];
             
             // Add all messages
-            for (const message of sortedMessages) {
+            for (const message of messages) {
                 const messageElement = this.createMessageElement(message);
                 this.messagesContainer.appendChild(messageElement);
             }
