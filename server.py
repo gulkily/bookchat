@@ -128,9 +128,19 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
             
             # Main application routes
             if path == '/':
-                # Serve main page
-                logger.debug("Serving main page")
-                self.serve_file('templates/index.html', 'text/html')
+                # Get username from cookie
+                username = self.get_username_from_cookie()
+                
+                # Render template with username
+                template = self.jinja_env.get_template('index.html')
+                content = template.render(username=username)
+                
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html')
+                self.end_headers()
+                self.wfile.write(content.encode())
+                return
+                
             elif path == '/messages':
                 # Serve messages
                 logger.debug("Handling messages request")
@@ -397,13 +407,14 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps(error_response).encode('utf-8'))
                 return
                 
-            # Send success response
+            # Send success response with cookie
             response = {
                 'success': True,
                 'username': new_username
             }
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
+            self.send_header('Set-Cookie', f'username={new_username}; Path=/; HttpOnly; SameSite=Strict')
             self.end_headers()
             self.wfile.write(json.dumps(response).encode('utf-8'))
             
@@ -438,7 +449,7 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
                 return
                 
             # Get current username from cookie or default to anonymous
-            username = self.get_current_username()
+            username = self.get_username_from_cookie()
             
             # Handle add/remove reaction
             if data['action'] == 'add':
@@ -591,6 +602,15 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             logger.error(f"Error serving status page: {str(e)}")
             self.handle_error(500, str(e))
+
+    def get_username_from_cookie(self):
+        """Get username from cookie or return 'anonymous'"""
+        cookies = {}
+        if 'Cookie' in self.headers:
+            for cookie in self.headers['Cookie'].split(';'):
+                name, value = cookie.strip().split('=', 1)
+                cookies[name] = value
+        return cookies.get('username', 'anonymous')
 
 def find_available_port(start_port=8000, max_attempts=100):
     """Find an available port starting from start_port"""

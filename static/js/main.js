@@ -5,11 +5,30 @@ let messageVerificationEnabled = false;
 
 // Initialize everything
 document.addEventListener('DOMContentLoaded', async () => {
-    await verifyUsername();
+    await initializeUsername();
     setupMessageInput();
     setupUsernameUI();
     await loadMessages();
 });
+
+async function initializeUsername() {
+    try {
+        // Get username from cookie or default to anonymous
+        currentUsername = document.cookie.split('; ').find(row => row.startsWith('username='))?.split('=')[1] || 'anonymous';
+        
+        // Update UI
+        const usernameDisplay = document.getElementById('username-display');
+        if (usernameDisplay) {
+            usernameDisplay.textContent = currentUsername;
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Error initializing username:', error);
+        currentUsername = 'anonymous';
+        return false;
+    }
+}
 
 async function verifyUsername() {
     try {
