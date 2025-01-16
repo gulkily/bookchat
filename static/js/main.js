@@ -53,6 +53,12 @@ async function loadMessages() {
         let messages = data.messages;
         messageVerificationEnabled = data.messageVerificationEnabled;
         
+        // Update username if provided by server
+        if (data.currentUsername) {
+            currentUsername = data.currentUsername;
+            updateUsernameDisplay(currentUsername);
+        }
+        
         // Filter out unverified messages when verification is enabled
         if (messageVerificationEnabled) {
             messages = messages.filter(message => message.verified && message.verified.toLowerCase() === 'true');

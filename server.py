@@ -493,20 +493,45 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR)
 
     def serve_messages(self):
-        """Helper method to serve messages as JSON"""
+        """Serve messages as JSON"""
         try:
-            messages = storage.get_messages()
-            
-            response = {
-                'messages': messages,
-                'messageVerificationEnabled': MESSAGE_VERIFICATION_ENABLED
-            }
-            
+            messages = []
+            for filename in sorted(os.listdir('messages')):
+                if not filename.endswith('.txt'):
+                    continue
+                
+                filepath = os.path.join('messages', filename)
+                with open(filepath, 'r') as f:
+                    message_data = {}
+                    # Parse message headers
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            break
+                        if ': ' in line:
+                            key, value = line.split(': ', 1)
+                            message_data[key.lower()] = value
+                    # Get message content
+                    content = f.read().strip()
+                    if content:
+                        message_data['content'] = content
+                        messages.append(message_data)
+        
+            # Get current username from cookie
+            current_username = self.get_username_from_cookie()
+        
+            # Send response
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
+        
+            response = {
+                'messages': messages,
+                'currentUsername': current_username,
+                'messageVerificationEnabled': MESSAGE_VERIFICATION_ENABLED
+            }
             self.wfile.write(json.dumps(response).encode('utf-8'))
-            
+        
         except Exception as e:
             logger.error(f"Error serving messages: {e}")
             self.handle_error(500, str(e))
@@ -536,7 +561,7 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(response).encode('utf-8'))
-            
+        
         except Exception as e:
             logger.error(f"Error verifying username: {e}")
             self.handle_error(500, str(e))
@@ -594,7 +619,7 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
             template = self.jinja_env.get_template('status.html')
             status_data = self.get_system_status()
             content = template.render(**status_data)
-            
+        
             self.send_response(HTTPStatus.OK)
             self.send_header('Content-Type', 'text/html')
             self.end_headers()
