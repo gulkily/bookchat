@@ -304,21 +304,26 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.handle_error(400, "Message content cannot be empty")
                 return
 
+            # Get username from cookie
+            username = self.get_username_from_cookie()
+            logger.debug(f"Using username from cookie: {username}")
+
             logger.debug(f"Processed content: {content!r}")
             logger.debug(f"Processed username: {username!r}")
 
-            # Save message
-            timestamp = datetime.now()
-            if storage.save_message(username, content, timestamp):
+            # Save message using git manager
+            success, message_id = git_manager.save_message(content, username)
+            if success:
                 response = {
                     'success': True,
                     'message': 'Message saved successfully',
                     'data': {
                         'content': content,
                         'author': username,
-                        'createdAt': timestamp.astimezone().isoformat(),
+                        'createdAt': datetime.now().astimezone().isoformat(),
                         'verified': 'true',
-                        'type': 'message'
+                        'type': 'message',
+                        'id': message_id
                     }
                 }
                 self.send_response(200)
@@ -326,8 +331,8 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps(response).encode('utf-8'))
             else:
-                self.handle_error(500, "Failed to save message")
-            
+                self.handle_error(500, f"Failed to save message: {message_id}")
+        
         except Exception as e:
             logger.error(f"Error handling message post: {e}")
             self.handle_error(500, str(e))
@@ -342,7 +347,7 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
             # Parse form data
             form_data = parse_qs(body)
             new_username = form_data.get('new_username', [''])[0]
-            
+
             if new_username:
                 # Create username change message
                 content = json.dumps({
