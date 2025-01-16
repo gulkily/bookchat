@@ -4,7 +4,11 @@ import logging
 import socket
 import time
 import webbrowser
+import json
+import os
 from pathlib import Path
+
+from server.config import REPO_PATH, STATIC_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +42,54 @@ def open_browser(port, max_attempts=3, delay=1.0):
     
     return False
 
-def ensure_directories():
+def ensure_directories() -> None:
     """Ensure required directories exist."""
-    required_dirs = ['logs', 'messages', 'identity/public_keys']
-    for dir_path in required_dirs:
-        try:
-            Path(dir_path).mkdir(parents=True, exist_ok=True)
-            logger.info(f"Created directory: {dir_path}")
-        except Exception as e:
-            logger.error(f"Failed to create directory: {dir_path} - {e}")
+    try:
+        # Create required directories if they don't exist
+        os.makedirs(REPO_PATH, exist_ok=True)
+        os.makedirs(STATIC_DIR, exist_ok=True)
+        os.makedirs(os.path.join(REPO_PATH, 'messages'), exist_ok=True)
+        os.makedirs(os.path.join(REPO_PATH, 'identity'), exist_ok=True)
+        os.makedirs(os.path.join(REPO_PATH, 'identity/public_keys'), exist_ok=True)
+    except Exception as e:
+        logger.error(f"Error creating directories: {e}")
+        raise
+
+def send_json_response(handler, data: dict, status: int = 200) -> None:
+    """Send a JSON response.
+    
+    Args:
+        handler: The request handler instance
+        data: The data to send as JSON
+        status: HTTP status code (default: 200)
+    """
+    try:
+        response = json.dumps(data)
+        handler.send_response(status)
+        handler.send_header('Content-Type', 'application/json')
+        handler.send_header('Content-Length', str(len(response)))
+        handler.end_headers()
+        handler.wfile.write(response.encode())
+    except Exception as e:
+        logger.error(f"Error sending JSON response: {e}")
+        raise
+
+def parse_message(message_data: dict) -> dict:
+    """Parse and validate a message.
+    
+    Args:
+        message_data: Raw message data from client
+        
+    Returns:
+        Validated message dictionary
+    """
+    required_fields = ['content', 'author', 'timestamp']
+    for field in required_fields:
+        if field not in message_data:
+            raise ValueError(f"Missing required field: {field}")
+            
+    return {
+        'content': str(message_data['content']),
+        'author': str(message_data['author']),
+        'timestamp': str(message_data['timestamp'])
+    }
