@@ -312,26 +312,30 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
             logger.debug(f"Processed username: {username!r}")
 
             # Save message using git manager
-            success, message_id = git_manager.save_message(content, username)
-            if success:
-                response = {
-                    'success': True,
-                    'message': 'Message saved successfully',
-                    'data': {
-                        'content': content,
-                        'author': username,
-                        'createdAt': datetime.now().astimezone().isoformat(),
-                        'verified': 'true',
-                        'type': 'message',
-                        'id': message_id
+            try:
+                message_info = git_manager.save_message(content, username)
+                if message_info:
+                    response = {
+                        'success': True,
+                        'message': 'Message saved successfully',
+                        'data': {
+                            'content': content,
+                            'author': username,
+                            'createdAt': datetime.now().astimezone().isoformat(),
+                            'verified': 'true',
+                            'type': 'message',
+                            'id': message_info['id']
+                        }
                     }
-                }
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps(response).encode('utf-8'))
-            else:
-                self.handle_error(500, f"Failed to save message: {message_id}")
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps(response).encode('utf-8'))
+                else:
+                    self.handle_error(500, "Failed to save message")
+            except Exception as e:
+                logger.error(f"Error saving message: {e}")
+                self.handle_error(500, f"Failed to save message: {str(e)}")
         
         except Exception as e:
             logger.error(f"Error handling message post: {e}")
