@@ -44,3 +44,6 @@ logs/
 *.log
 keys/*.pem
 keys/*.pub
+
+# Git
+cloned_repos/
