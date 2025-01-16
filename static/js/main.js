@@ -398,8 +398,18 @@ function setupMessageInput() {
     
     const messageForm = document.getElementById('js-message-form');
     const messageInput = document.getElementById('message-input');
+    const charCounter = document.getElementById('js-char-counter');
     
     if (messageForm && messageInput) {
+        // Update character count on input
+        const updateCharCount = () => {
+            const count = messageInput.value.length;
+            charCounter.textContent = `Characters: ${count}`;
+        };
+
+        // Add input event listener for live character counting
+        messageInput.addEventListener('input', updateCharCount);
+        
         // Function to validate and send message
         const validateAndSendMessage = async (content) => {
             // Ensure content is a string and properly trimmed

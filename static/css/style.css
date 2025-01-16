@@ -373,6 +373,14 @@ body {
     background: var(--button-hover);
 }
 
+.char-counter {
+    font-size: 0.8em;
+    color: #666;
+    margin-top: 4px;
+    text-align: right;
+    padding-right: 8px;
+}
+
 /* Error states */
 #message-input.error {
     border-color: #ff4444;

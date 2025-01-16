@@ -56,11 +56,13 @@
             <form id="message-form" method="POST" action="/messages" class="message-input-container nojs-only">
                 <textarea name="content" placeholder="Type your message here..." rows="1" required></textarea>
                 <button type="submit">Send</button>
+                <div class="char-counter">Characters: 0</div>
             </form>
             <!-- JS message form -->
             <form id="js-message-form" class="message-input-container js-only">
                 <textarea id="message-input" placeholder="Type your message here..." rows="1" required></textarea>
                 <button type="submit" id="send-button">Send</button>
+                <div id="js-char-counter" class="char-counter">Characters: 0</div>
             </form>
         </div>
 
