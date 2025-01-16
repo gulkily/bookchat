@@ -99,8 +99,23 @@ class ChatRequestHandler(BaseHTTPRequestHandler):
             
             # Route request based on path
             if parsed_url.path == '/messages':
-                response = await self.message_handler.handle_get_messages(self)
-                self.send_json_response(response)
+                try:
+                    response = await self.message_handler.handle_get_messages(self)
+                    # Ensure response is a dictionary with 'success' key
+                    if not isinstance(response, dict) or 'success' not in response:
+                        response = {
+                            'success': False, 
+                            'error': 'Invalid response from message handler',
+                            'messages': []
+                        }
+                    self.send_json_response(response)
+                except Exception as handler_error:
+                    logging.error(f"Error in message handler: {handler_error}", exc_info=True)
+                    self.send_json_response({
+                        'success': False, 
+                        'error': str(handler_error),
+                        'messages': []
+                    })
             elif parsed_url.path == '/' or parsed_url.path == '/index.html':
                 self.serve_file('templates/chat.html', 'text/html')
             elif parsed_url.path == '/favicon.ico':
@@ -120,7 +135,7 @@ class ChatRequestHandler(BaseHTTPRequestHandler):
                 
         except Exception as e:
             if not isinstance(e, (BrokenPipeError, ConnectionResetError)):
-                logging.error(f"Error handling GET request: {str(e)}")
+                logging.error(f"Error handling GET request: {str(e)}", exc_info=True)
                 self.send_error(500, str(e))
 
     def do_POST(self):

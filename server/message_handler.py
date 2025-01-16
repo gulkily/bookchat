@@ -15,15 +15,16 @@ class MessageHandler:
             messages = await self.storage.get_messages()
             return {
                 'success': True,
-                'messages': messages,
+                'messages': messages or [],  # Ensure messages is always a list
                 'messageVerificationEnabled': True,
                 'reactionsEnabled': True
             }
         except Exception as e:
-            logger.error(f"Error getting messages: {e}")
+            logger.error(f"Error getting messages: {e}", exc_info=True)
             return {
                 'success': False,
-                'error': str(e)
+                'error': str(e),
+                'messages': []  # Return empty list to prevent frontend errors
             }
 
     async def handle_post_message(self, request):
