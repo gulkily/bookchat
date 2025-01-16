@@ -16,44 +16,29 @@ async function initializeUsername() {
         // Get username from cookie or default to anonymous
         currentUsername = document.cookie.split('; ').find(row => row.startsWith('username='))?.split('=')[1] || 'anonymous';
         
-        // Update UI
-        const usernameDisplay = document.getElementById('username-display');
-        if (usernameDisplay) {
-            usernameDisplay.textContent = currentUsername;
-        }
+        // Update all UI elements that show username
+        updateUsernameDisplay(currentUsername);
         
         return true;
     } catch (error) {
         console.error('Error initializing username:', error);
         currentUsername = 'anonymous';
+        updateUsernameDisplay(currentUsername);
         return false;
     }
 }
 
-async function verifyUsername() {
-    try {
-        const response = await fetch('/verify_username');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        currentUsername = data.username;
-        
-        // Update localStorage with the verified username
-        localStorage.setItem('username', currentUsername);
-        
-        // Update UI if it exists
-        const usernameDisplay = document.getElementById('current-username');
-        if (usernameDisplay) {
-            usernameDisplay.textContent = `Current username: ${currentUsername}`;
-        }
-        
-        return data.status === 'verified';
-    } catch (error) {
-        console.error('Error verifying username:', error);
-        // Fall back to stored username or anonymous
-        currentUsername = localStorage.getItem('username') || 'anonymous';
-        return false;
+function updateUsernameDisplay(username) {
+    // Update username display in header
+    const usernameDisplay = document.getElementById('username-display');
+    if (usernameDisplay) {
+        usernameDisplay.textContent = username;
+    }
+    
+    // Update current-username span for no-js version
+    const currentUsernameSpan = document.querySelector('.current-username');
+    if (currentUsernameSpan) {
+        currentUsernameSpan.textContent = `(Current: ${username})`;
     }
 }
 
@@ -89,10 +74,15 @@ async function loadMessages() {
         // Scroll to bottom
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
         
+        // Update username if it changed server-side
+        if (data.currentUsername && data.currentUsername !== currentUsername) {
+            currentUsername = data.currentUsername;
+            updateUsernameDisplay(currentUsername);
+        }
+        
         // Update current username
         if (data.currentUsername) {
             currentUsername = data.currentUsername;
-            localStorage.setItem('username', currentUsername);
             const usernameDisplay = document.getElementById('current-username');
             if (usernameDisplay) {
                 usernameDisplay.textContent = `Current username: ${currentUsername}`;
@@ -444,20 +434,16 @@ async function changeUsername(newUsername) {
         });
 
         if (!response.ok) {
-            const error = await response.text();
-            alert(error);
+            const errorData = await response.json();
+            alert(errorData.error?.message || 'Failed to change username. Please try again.');
             return false;
         }
 
         // Update local state
         currentUsername = newUsername;
-        localStorage.setItem('username', newUsername);
         
-        // Update display
-        const usernameDisplay = document.getElementById('username-display');
-        if (usernameDisplay) {
-            usernameDisplay.textContent = newUsername;
-        }
+        // Update all UI elements
+        updateUsernameDisplay(newUsername);
         
         return true;
     } catch (error) {
