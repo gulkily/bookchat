@@ -88,3 +88,83 @@ def send_json_response(self, data: dict) -> None:
     except Exception as e:
         logger.error(f"Error sending JSON response: {e}")
         self.handle_error(500, str(e))
+
+def handle_message_post(self) -> None:
+    """Handle message posting."""
+    try:
+        # Read and parse request body
+        content_length = int(self.headers.get('Content-Length', 0))
+        logger.debug(f"Content-Length: {content_length}")
+        logger.debug(f"Content-Type: {self.headers.get('Content-Type', '')}")
+        
+        if content_length == 0:
+            logger.error("No content received in request")
+            self.handle_error(400, "No content received")
+            return
+        
+        body = self.rfile.read(content_length).decode('utf-8')
+        logger.debug(f"Raw request body: {body}")
+        
+        # Handle both JSON and form data
+        content_type = self.headers.get('Content-Type', '')
+        if 'application/json' in content_type:
+            try:
+                data = json.loads(body)
+                logger.debug(f"Parsed JSON data: {data}")
+                content = data.get('content')
+                username = data.get('username', 'anonymous')
+            except json.JSONDecodeError as e:
+                logger.error(f"Error decoding JSON: {e}")
+                self.handle_error(400, "Invalid JSON format")
+                return
+        else:
+            # Parse form data
+            form_data = parse_qs(body)
+            logger.debug(f"Parsed form data: {form_data}")
+            content = form_data.get('content', [''])[0]
+            username = form_data.get('username', ['anonymous'])[0]
+        
+        # Validate content after parsing
+        if content is None:
+            logger.error("Message content is None")
+            self.handle_error(400, "Message content is required")
+            return
+        
+        content = content.strip()
+        if not content:
+            logger.error("Message content is empty after stripping")
+            self.handle_error(400, "Message content cannot be empty")
+            return
+
+        # Get username from cookie
+        username = self.get_username_from_cookie()
+        logger.debug(f"Using username from cookie: {username}")
+
+        logger.debug(f"Processed content: {content!r}")
+        logger.debug(f"Processed username: {username!r}")
+
+        # Save message using storage backend
+        try:
+            timestamp = datetime.now()
+            if self.server.storage.save_message(username, content, timestamp):
+                response = {
+                    'success': True,
+                    'message': 'Message saved successfully',
+                    'data': {
+                        'content': content,
+                        'author': username,
+                        'createdAt': timestamp.isoformat(),
+                        'verified': 'true',
+                        'type': 'message'
+                    }
+                }
+                send_json_response(self, response)
+            else:
+                self.handle_error(500, "Failed to save message")
+        except Exception as e:
+            logger.error(f"Error saving message: {e}")
+            self.handle_error(500, f"Failed to save message: {str(e)}")
+    
+    except Exception as e:
+        logger.error(f"Error handling message post: {e}")
+        self.handle_error(500, str(e))

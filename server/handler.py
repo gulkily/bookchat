@@ -14,7 +14,8 @@ from server import config
 from server.handler_methods import (
     serve_messages,
     verify_username,
-    serve_status_page
+    serve_status_page,
+    handle_message_post
 )
 
 logger = logging.getLogger(__name__)
@@ -127,4 +128,18 @@ class ChatRequestHandler(SimpleHTTPRequestHandler):
                 self.serve_file(path.lstrip('/'))
         except Exception as e:
             logger.error(f"Error handling GET request: {e}")
+            self.handle_error(500, str(e))
+
+    def do_POST(self) -> None:
+        """Handle POST requests."""
+        try:
+            parsed_path = urlparse(self.path)
+            path = parsed_path.path
+
+            if path == '/messages':
+                handle_message_post(self)
+            else:
+                self.handle_error(404, f"Unknown endpoint: {path}")
+        except Exception as e:
+            logger.error(f"Error handling POST request: {e}")
             self.handle_error(500, str(e))

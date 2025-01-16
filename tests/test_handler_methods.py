@@ -5,7 +5,9 @@ import json
 from unittest.mock import MagicMock, patch
 from urllib.parse import urlencode
 from server.handler_methods import serve_messages, verify_username, serve_status_page
+from server.handler import ChatRequestHandler
 from pathlib import Path
+from datetime import datetime
 
 def send_json_response(handler, data):
     """Helper to send JSON response."""
@@ -111,3 +113,67 @@ def test_serve_status_page(mock_handler):
     call_args = mock_handler.wfile.write.call_args[0][0]
     response = json.loads(call_args.decode('utf-8'))
     assert response['status'] == 'running'
+
+def test_message_persistence(mock_handler, tmp_path):
+    """Test that messages are actually persisted after posting."""
+    with patch('server.config.REPO_PATH', tmp_path), \
+         patch('server.handler_methods.datetime') as mock_datetime:
+        
+        # Setup test data
+        test_content = "Test message content"
+        test_username = "test_user"
+        test_time = datetime(2025, 1, 16, 10, 45, 32)  # Use current time from context
+        mock_datetime.now.return_value = test_time
+        
+        # Mock request data
+        mock_handler.headers = {
+            'Content-Type': 'application/json',
+            'Content-Length': '100'
+        }
+        request_body = json.dumps({
+            'content': test_content,
+            'username': test_username
+        }).encode('utf-8')
+        mock_handler.rfile = MagicMock()
+        mock_handler.rfile.read.return_value = request_body
+        
+        # Mock storage to simulate current failing behavior
+        mock_storage = MagicMock()
+        mock_storage.save_message.return_value = True
+        mock_handler.server.storage = mock_storage
+        
+        # Create messages directory
+        messages_dir = tmp_path / 'messages'
+        messages_dir.mkdir(parents=True)
+        
+        # Mock handler methods
+        mock_handler.wfile = MagicMock()
+        mock_handler.send_response = MagicMock()
+        mock_handler.send_header = MagicMock()
+        mock_handler.end_headers = MagicMock()
+        mock_handler.get_username_from_cookie = MagicMock(return_value=test_username)
+        mock_handler.path = '/messages'  # Set the path for POST request
+        mock_handler.handle_error = MagicMock()
+        
+        # Call handle_message_post directly
+        from server.handler_methods import handle_message_post
+        handle_message_post(mock_handler)
+        
+        # Verify that storage.save_message was called with correct arguments
+        mock_storage.save_message.assert_called_once_with(
+            test_username,
+            test_content,
+            test_time
+        )
+        
+        # Verify response was sent
+        mock_handler.send_response.assert_called_once_with(200)
+        mock_handler.send_header.assert_called_with('Content-Type', 'application/json')
+        mock_handler.end_headers.assert_called_once()
+        
+        # Verify response content
+        response_call = mock_handler.wfile.write.call_args[0][0]
+        response_data = json.loads(response_call.decode('utf-8'))
+        assert response_data['success'] is True
+        assert response_data['data']['content'] == test_content
+        assert response_data['data']['author'] == test_username
