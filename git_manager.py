@@ -117,6 +117,7 @@ class GitManager:
         self.github_token = os.environ.get('GITHUB_TOKEN')
         self.repo_name = os.environ.get('GITHUB_REPO')
         self.should_sync_to_github = os.environ.get('SYNC_TO_GITHUB', '').lower() == 'true'
+        self.enable_fork_sync = os.environ.get('ENABLE_FORK_SYNC', 'false').lower() == 'true'
         
         # Initialize key manager with both private and public key directories
         private_keys_dir = os.environ.get('KEYS_DIR', str(self.repo_path / 'keys'))
@@ -260,7 +261,8 @@ class GitManager:
                 logger.info(f"Successfully pushed changes to GitHub for {relative_path}")
 
                 # Sync with forks if enabled
-                self.sync_with_forks()
+                if self.enable_fork_sync:
+                    self.sync_forks()
 
         except Exception as e:
             logger.error(f"Error syncing to GitHub: {e}")
@@ -313,8 +315,9 @@ class GitManager:
             return False
 
         try:
-            # First sync with all forks
-            self.sync_forks()
+            # Only sync with forks if the feature is enabled
+            if self.enable_fork_sync:
+                self.sync_forks()
             
             # Then pull from main repo
             self._run_git_command(['git', 'fetch', 'origin', 'main'])
