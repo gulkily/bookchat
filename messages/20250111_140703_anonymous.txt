@@ -1,5 +1,0 @@
-{
-  "user": "anonymous",
-  "content": "{\"old_username\":\"anonymous\",\"new_username\":\"ilyag\"}",
-  "timestamp": "2025-01-11T14:07:03.388211"
-}

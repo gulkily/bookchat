@@ -1,7 +1,0 @@
-Date: 2025-01-08T13:46:50.663321
-Author: system
-Parent-Message: 20250108_134650_ilyaGGG.txt
-Signature: 1920a0412956e33ad51c4b50eff08b4a115e370e78e0b6585992b09938498acab8aa7c92957322fb5d93b8edc524cf18b6672ed0fa7d625db1b944667ba8bb7af4f4206537af6740c9a40ef343d90d2cf2713b53b9a936b87ce3a17a2a4fedb51d3137a4166df4ae9a3a51fad61bace80f4d80cc25367681411498383aa656f04dcf456ea5d03c8b9b0cddcf5048987e590cdceb6c60a2be0a8cbf9e519569fde79ed4cf6c2e480344657edff42683cc3c564afa255661d18ece7b486548e9856c559114e653d0244e431da68dc41585dc4e00af7900e77dcbab3ada745dc6757131796f5c4dd2e9a3b0bf5e32c7e62c5887009a8c285e74bb5b46044659302d
-Type: error
-
-Username change failed: [Errno 2] No such file or directory: '/home/wsl/bookchat/public_keys/ilyaGGG.pub' -> '/home/wsl/bookchat/public_keys/ilyag<script>alert()</script>.pub'

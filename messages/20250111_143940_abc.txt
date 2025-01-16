@@ -1,5 +1,0 @@
-{
-  "user": "abc",
-  "content": "adf",
-  "timestamp": "2025-01-11T14:39:40.243155"
-}

@@ -1,6 +1,0 @@
-testing
-
--- 
-Author: ilyag
-Date: 2025-01-14T13:44:44-05:00
-Public-Key: identity/public_keys/ilyag.pub

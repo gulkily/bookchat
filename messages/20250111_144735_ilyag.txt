@@ -1,5 +1,0 @@
-{
-  "user": "ilyag",
-  "content": "asdfadsf",
-  "timestamp": "2025-01-11T14:47:35.331480"
-}

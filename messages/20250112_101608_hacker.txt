@@ -1,6 +1,0 @@
-I am trying to impersonate another user with an invalid signature!
-
--- 
-Author: boy
-Date: 2025-01-12T10:16:08-05:00
-Signature: 123abc456def789ghi0jkl1mno2pqr3stu4vwx5yz6789

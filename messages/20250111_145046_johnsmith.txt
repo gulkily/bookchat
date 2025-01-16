@@ -1,5 +1,0 @@
-{
-  "author": "johnsmith",
-  "content": "thanks",
-  "timestamp": "2025-01-11T14:50:46.763883"
-}

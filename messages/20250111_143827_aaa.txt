@@ -1,5 +1,0 @@
-{
-  "user": "aaa",
-  "content": "adsfafads",
-  "timestamp": "2025-01-11T14:38:27.613234"
-}

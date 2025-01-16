@@ -1,6 +1,0 @@
-from mitchat
-
--- 
-Author: ilyag
-Date: 2025-01-14T13:44:37-05:00
-Public-Key: identity/public_keys/ilyag.pub

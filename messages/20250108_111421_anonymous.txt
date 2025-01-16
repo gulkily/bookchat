@@ -1,4 +1,0 @@
-Date: 2025-01-08T11:14:21.532009
-Author: anonymous
-
-<script>alert()</script>

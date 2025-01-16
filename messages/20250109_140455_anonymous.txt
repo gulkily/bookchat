@@ -1,5 +1,0 @@
-{
-  "user": "anonymous",
-  "content": "aasdfdafadf",
-  "timestamp": "2025-01-09T14:04:55.144986"
-}

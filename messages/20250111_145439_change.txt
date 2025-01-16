@@ -1,8 +1,0 @@
-{
-  "author": "change",
-  "content": "adsfads",
-  "timestamp": "2025-01-11T14:54:39.924427",
-  "signature": "signed",
-  "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzpT51JrIUs+JxiNjd2AD\nInmv+GKrPuZe/eDQxmAGCW6PYp+Zhz0mzt2cLHvTTwyCSvGcRC/yXo9LCUNSm+G6\nX24TtDR3FaYd+YJ4VDG6dU3lhEZM8FcaSYyX9qLJ0TZ6FTXGiha5ZPXdugrBPf58\n7opuUOzaqi5pTpc9e3oddz0iNo6Ss+WwYsv44nV0enNMcP1xD71K7CRS8bQPcaQ1\nLGY7Hcfbpu8svz8JpNRrZLqBLGD2ZC4+e7jZA91qa9AuXN5nrsKVGTA2m4WZCzvu\nuOCdrYPr7hzSse7VnW2RTLOIPOCWeS2KGmskkdYOtzb7hfxZN1JmubRRH6IYSi/V\nAQIDAQAB\n-----END PUBLIC KEY-----",
-  "verified": true
-}
