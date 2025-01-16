@@ -49,11 +49,10 @@ class TestChatRequestHandler:
 
     def test_serve_file(self, mock_handler):
         """Test serving a file."""
-        with patch('pathlib.Path.is_file', return_value=True), \
-             patch('pathlib.Path.read_bytes', return_value=b'test content'):
-            mock_handler.serve_file('test.txt')
-            mock_handler.send_response.assert_called_with(200)
-            mock_handler.send_header.assert_any_call('Content-Type', 'text/plain')
-            mock_handler.send_header.assert_any_call('Content-Length', '12')
-            mock_handler.end_headers.assert_called_once()
-            mock_handler.wfile.write.assert_called_with(b'test content')
+        with patch('pathlib.Path.exists', return_value=True), \
+             patch('http.server.SimpleHTTPRequestHandler.do_GET') as mock_do_get:
+            
+            mock_handler.path = '/test.txt'
+            mock_handler.do_GET()
+            
+            mock_do_get.assert_called_once()

@@ -3,6 +3,7 @@
 import json
 import logging
 import mimetypes
+import os
 import socket
 import traceback
 from datetime import datetime
@@ -20,8 +21,15 @@ class ChatRequestHandler(SimpleHTTPRequestHandler):
     """Handler for chat server requests."""
 
     def __init__(self, *args, **kwargs):
-        # Set the directory for serving static files
-        super().__init__(*args, directory=STATIC_DIR, **kwargs)
+        """Initialize the handler.
+        
+        Args:
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+        """
+        # Get the static directory from environment or config
+        directory = os.environ.get('STATIC_DIR', STATIC_DIR)
+        super().__init__(*args, directory=directory, **kwargs)
 
     def log_error(self, format, *args):
         """Override to handle expected errors more gracefully."""
