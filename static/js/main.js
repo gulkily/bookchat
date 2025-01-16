@@ -161,30 +161,6 @@ function createMessageElement(message) {
     }
     rightSection.appendChild(timestampSpan);
     
-    // Add commit hash with GitHub link if available
-    if (message.commit_hash && message.repo_name) {
-        const commitSpan = document.createElement('span');
-        commitSpan.className = 'commit-hash';
-        const commitLink = document.createElement('a');
-        commitLink.href = `https://github.com/${message.repo_name}/commit/${message.commit_hash}`;
-        commitLink.target = '_blank';
-        commitLink.textContent = message.commit_hash;
-        commitLink.title = 'View commit on GitHub';
-        commitSpan.appendChild(commitLink);
-        rightSection.appendChild(commitSpan);
-    }
-    
-    // Add source file link if available and verification is enabled and not pending
-    if (message.file && messageVerificationEnabled && !message.pending) {
-        const sourceLink = document.createElement('a');
-        sourceLink.className = 'source-link';
-        sourceLink.href = `/messages/${message.file.split('/').pop()}`; // Get just the filename
-        sourceLink.textContent = '&#128273;';
-        sourceLink.title = 'View message source file';
-        sourceLink.target = '_blank'; // Open in new tab
-        rightSection.appendChild(sourceLink);
-    }
-    
     messageHeader.appendChild(leftSection);
     messageHeader.appendChild(rightSection);
     messageDiv.appendChild(messageHeader);
@@ -192,11 +168,124 @@ function createMessageElement(message) {
     // Add message content
     const content = document.createElement('div');
     content.className = 'content';
-    // Ensure we display the actual message content, not metadata
     content.textContent = message.content || 'No message content';
     messageDiv.appendChild(content);
     
+    // Add reactions section
+    const reactionsDiv = document.createElement('div');
+    reactionsDiv.className = 'message-reactions';
+    
+    // Add existing reactions
+    const reactions = message.reactions || {};
+    for (const [emoji, users] of Object.entries(reactions)) {
+        const reactionButton = createReactionButton(emoji, users, message.id);
+        reactionsDiv.appendChild(reactionButton);
+    }
+    
+    // Add "Add Reaction" button
+    const addReactionButton = document.createElement('button');
+    addReactionButton.className = 'add-reaction-button';
+    addReactionButton.innerHTML = '&#128512;'; // Smiley face emoji
+    addReactionButton.title = 'Add reaction';
+    addReactionButton.onclick = (e) => {
+        e.stopPropagation();
+        showReactionPicker(message.id, reactionsDiv, addReactionButton);
+    };
+    reactionsDiv.appendChild(addReactionButton);
+    
+    messageDiv.appendChild(reactionsDiv);
+    
     return messageDiv;
+}
+
+function createReactionButton(emoji, users, messageId) {
+    const button = document.createElement('button');
+    button.className = 'reaction-button';
+    if (users.includes(currentUsername)) {
+        button.classList.add('active');
+    }
+    
+    const emojiSpan = document.createElement('span');
+    emojiSpan.textContent = emoji;
+    button.appendChild(emojiSpan);
+    
+    const countSpan = document.createElement('span');
+    countSpan.className = 'reaction-count';
+    countSpan.textContent = users.length;
+    button.appendChild(countSpan);
+    
+    button.onclick = async (e) => {
+        e.stopPropagation();
+        const action = users.includes(currentUsername) ? 'remove' : 'add';
+        await toggleReaction(messageId, emoji, action);
+    };
+    
+    return button;
+}
+
+function showReactionPicker(messageId, reactionsDiv, addButton) {
+    // Remove existing picker if any
+    const existingPicker = document.querySelector('.reaction-picker');
+    if (existingPicker) {
+        existingPicker.remove();
+    }
+    
+    const picker = document.createElement('div');
+    picker.className = 'reaction-picker';
+    
+    // Add reaction options
+    const reactions = ['👍', '❤️', '😄'];
+    for (const emoji of reactions) {
+        const button = document.createElement('button');
+        button.textContent = emoji;
+        button.onclick = async () => {
+            await toggleReaction(messageId, emoji, 'add');
+            picker.remove();
+        };
+        picker.appendChild(button);
+    }
+    
+    // Position picker near the add button
+    const rect = addButton.getBoundingClientRect();
+    picker.style.position = 'absolute';
+    picker.style.left = `${rect.left}px`;
+    picker.style.top = `${rect.bottom + 4}px`;
+    
+    document.body.appendChild(picker);
+    
+    // Close picker when clicking outside
+    const closeHandler = (e) => {
+        if (!picker.contains(e.target) && e.target !== addButton) {
+            picker.remove();
+            document.removeEventListener('click', closeHandler);
+        }
+    };
+    document.addEventListener('click', closeHandler);
+}
+
+async function toggleReaction(messageId, reaction, action) {
+    try {
+        const response = await fetch('/reaction', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                messageId,
+                reaction,
+                action
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // Reload messages to show updated reactions
+        await loadMessages();
+    } catch (error) {
+        console.error('Error toggling reaction:', error);
+    }
 }
 
 async function sendMessage(content, type = 'message') {

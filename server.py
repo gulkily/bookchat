@@ -4,7 +4,6 @@ import http.server
 import socketserver
 import json
 import os
-from pathlib import Path
 import logging
 import traceback
 import re
@@ -144,9 +143,9 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
             elif path.startswith('/public_keys/'):
                 # Serve public key
                 key_name = path.split('/')[-1]
-                key_path = Path('public_keys') / key_name
-                if key_path.exists() and key_path.suffix == '.pub':
-                    self.serve_file(str(key_path), 'text/plain')
+                key_path = os.path.join('public_keys', key_name)
+                if os.path.exists(key_path) and key_path.endswith('.pub'):
+                    self.serve_file(key_path, 'text/plain')
                 else:
                     self.send_error(HTTPStatus.NOT_FOUND)
                     
@@ -154,12 +153,12 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
             elif path.startswith('/messages/'):
                 # Serve individual message
                 filename = path.split('/')[-1]
-                message_path = Path('messages') / filename
-                if message_path.exists() and message_path.is_file():
+                message_path = os.path.join('messages', filename)
+                if os.path.exists(message_path) and os.path.isfile(message_path):
                     self.send_response(HTTPStatus.OK)
                     self.send_header('Content-Type', 'text/plain')
                     self.end_headers()
-                    self.wfile.write(message_path.read_bytes())
+                    self.wfile.write(open(message_path, 'rb').read())
                 else:
                     self.send_error(HTTPStatus.NOT_FOUND, "Message file not found")
                     
@@ -227,18 +226,19 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         """Handle POST requests"""
         try:
-            parsed_path = urlparse(self.path)
-            client_address = self.client_address[0]
-            logger.info(f"POST request from {client_address} to {parsed_path.path}")
+            parsed_url = urlparse(self.path)
             
-            if parsed_path.path == '/messages':
+            if parsed_url.path == '/messages':
                 self.handle_message_post()
-            elif parsed_path.path == '/username':
+            elif parsed_url.path == '/username':
                 self.handle_username_post()
-            elif parsed_path.path == '/change_username':
+            elif parsed_url.path == '/change_username':
                 self.handle_username_change()
+            elif parsed_url.path == '/reaction':
+                self.handle_reaction_post()
             else:
                 self.send_error(HTTPStatus.NOT_FOUND)
+                
         except Exception as e:
             logger.error(f"Error in POST request handler", exc_info=True)
             self.handle_error(500, str(e))
@@ -382,6 +382,50 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
             logger.error(f"Error handling username change: {e}")
             self.handle_error(500, str(e))
 
+    def handle_reaction_post(self) -> None:
+        """Handle reaction posting"""
+        try:
+            # Read and parse request body
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self.handle_error(400, "No content received")
+                return
+                
+            body = self.rfile.read(content_length).decode('utf-8')
+            data = json.loads(body)
+            
+            # Validate required fields
+            if not all(key in data for key in ['messageId', 'reaction', 'action']):
+                self.handle_error(400, "Missing required fields")
+                return
+                
+            # Get current username from cookie or default to anonymous
+            username = self.get_current_username()
+            
+            # Handle add/remove reaction
+            if data['action'] == 'add':
+                success = storage.add_reaction(data['messageId'], username, data['reaction'])
+            elif data['action'] == 'remove':
+                success = storage.remove_reaction(data['messageId'], username, data['reaction'])
+            else:
+                self.handle_error(400, "Invalid action")
+                return
+                
+            if not success:
+                self.handle_error(500, "Failed to update reaction")
+                return
+                
+            # Send success response
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'status': 'success'}).encode('utf-8'))
+            
+        except json.JSONDecodeError:
+            self.handle_error(400, "Invalid JSON")
+        except Exception as e:
+            self.handle_error(500, str(e))
+
     def serve_file(self, filepath, content_type):
         """Helper method to serve a file with specified content type"""
         try:
@@ -476,8 +520,8 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
             latest_commit = "Unknown"
 
         # Get list of public keys
-        public_keys_dir = Path('public_keys')
-        public_keys = [f.name for f in public_keys_dir.glob('*.pub')] if public_keys_dir.exists() else []
+        public_keys_dir = os.path.join('public_keys')
+        public_keys = [f for f in os.listdir(public_keys_dir) if f.endswith('.pub')] if os.path.exists(public_keys_dir) else []
 
         # Get message counts
         messages = storage.get_messages()
