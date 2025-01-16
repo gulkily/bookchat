@@ -67,6 +67,7 @@ load_dotenv()
 
 # Feature flags
 MESSAGE_VERIFICATION_ENABLED = os.getenv('MESSAGE_VERIFICATION', 'false').lower() == 'true'
+REACTIONS_ENABLED = os.getenv('REACTIONS_ENABLED', 'false').lower() == 'true'
 
 # Configuration
 PORT = int(os.getenv('PORT', 8000))
@@ -537,7 +538,8 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
             response = {
                 'messages': messages,
                 'currentUsername': current_username,
-                'messageVerificationEnabled': MESSAGE_VERIFICATION_ENABLED
+                'messageVerificationEnabled': MESSAGE_VERIFICATION_ENABLED,
+                'reactionsEnabled': REACTIONS_ENABLED
             }
             self.wfile.write(json.dumps(response).encode('utf-8'))
         
@@ -614,6 +616,7 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
             'git_status': git_status,
             'signature_status': signature_status,
             'message_verification_enabled': MESSAGE_VERIFICATION_ENABLED,
+            'reactions_enabled': REACTIONS_ENABLED,
             'latest_commit': latest_commit,
             'public_keys': public_keys,
             'current_time': '2025-01-13T11:24:24-05:00',  # Using provided timestamp

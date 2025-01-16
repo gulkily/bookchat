@@ -2,6 +2,7 @@
 
 let currentUsername = 'anonymous';
 let messageVerificationEnabled = false;
+let reactionsEnabled = false;
 
 // Initialize everything
 document.addEventListener('DOMContentLoaded', async () => {
@@ -52,6 +53,7 @@ async function loadMessages() {
         const data = await response.json();
         let messages = data.messages;
         messageVerificationEnabled = data.messageVerificationEnabled;
+        reactionsEnabled = data.reactionsEnabled;
         
         // Update username if provided by server
         if (data.currentUsername) {
@@ -168,7 +170,7 @@ function createMessageElement(message) {
                 timestampSpan.title = 'No timestamp available';
             }
         } catch (error) {
-            console.error('Error formatting date:', error, message.createdAt);
+            console.error('Error formatting date:', error);
             timestampSpan.textContent = 'Error';
             timestampSpan.title = 'Error parsing date';
         }
@@ -185,29 +187,27 @@ function createMessageElement(message) {
     content.textContent = message.content || 'No message content';
     messageDiv.appendChild(content);
     
-    // Add reactions section
-    const reactionsDiv = document.createElement('div');
-    reactionsDiv.className = 'message-reactions';
-    
-    // Add existing reactions
-    const reactions = message.reactions || {};
-    for (const [emoji, users] of Object.entries(reactions)) {
-        const reactionButton = createReactionButton(emoji, users, message.id);
-        reactionsDiv.appendChild(reactionButton);
+    // Add reactions section only if enabled
+    if (reactionsEnabled) {
+        const reactionsDiv = document.createElement('div');
+        reactionsDiv.className = 'message-reactions';
+        
+        // Add existing reactions
+        const reactions = message.reactions || {};
+        for (const [emoji, users] of Object.entries(reactions)) {
+            const reactionButton = createReactionButton(emoji, users, message.id);
+            reactionsDiv.appendChild(reactionButton);
+        }
+        
+        // Add "Add Reaction" button
+        const addReactionButton = document.createElement('button');
+        addReactionButton.className = 'add-reaction-button';
+        addReactionButton.textContent = '+ Add Reaction';
+        addReactionButton.onclick = () => showReactionPicker(message.id, reactionsDiv, addReactionButton);
+        reactionsDiv.appendChild(addReactionButton);
+        
+        messageDiv.appendChild(reactionsDiv);
     }
-    
-    // Add "Add Reaction" button
-    const addReactionButton = document.createElement('button');
-    addReactionButton.className = 'add-reaction-button';
-    addReactionButton.innerHTML = '&#128512;'; // Smiley face emoji
-    addReactionButton.title = 'Add reaction';
-    addReactionButton.onclick = (e) => {
-        e.stopPropagation();
-        showReactionPicker(message.id, reactionsDiv, addReactionButton);
-    };
-    reactionsDiv.appendChild(addReactionButton);
-    
-    messageDiv.appendChild(reactionsDiv);
     
     return messageDiv;
 }
