@@ -30,7 +30,8 @@ def serve_messages(self) -> None:
         messages = self.server.storage.get_messages()
         
         response = {
-            'messages': messages,
+            'success': True,
+            'data': messages,
             'messageVerificationEnabled': config.MESSAGE_VERIFICATION_ENABLED
         }
         send_json_response(self, response)

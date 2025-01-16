@@ -177,3 +177,64 @@ def test_message_persistence(mock_handler, tmp_path):
         assert response_data['success'] is True
         assert response_data['data']['content'] == test_content
         assert response_data['data']['author'] == test_username
+
+def test_get_messages(mock_handler, tmp_path):
+    """Test that messages can be retrieved and displayed."""
+    with patch('server.config.REPO_PATH', tmp_path):
+        # Setup test data
+        test_messages = [
+            {
+                'content': 'First test message',
+                'username': 'user1',
+                'timestamp': datetime(2025, 1, 16, 10, 45, 32)
+            },
+            {
+                'content': 'Second test message',
+                'username': 'user2',
+                'timestamp': datetime(2025, 1, 16, 10, 50, 00)
+            }
+        ]
+        
+        # Mock storage to return test messages
+        mock_storage = MagicMock()
+        mock_storage.get_messages.return_value = [
+            {
+                'content': msg['content'],
+                'author': msg['username'],
+                'timestamp': msg['timestamp'].isoformat()
+            }
+            for msg in test_messages
+        ]
+        mock_handler.server.storage = mock_storage
+        
+        # Create messages directory
+        messages_dir = tmp_path / 'messages'
+        messages_dir.mkdir(parents=True)
+        
+        # Mock handler methods
+        mock_handler.wfile = MagicMock()
+        mock_handler.send_response = MagicMock()
+        mock_handler.send_header = MagicMock()
+        mock_handler.end_headers = MagicMock()
+        mock_handler.path = '/messages'
+        
+        # Call serve_messages
+        from server.handler_methods import serve_messages
+        serve_messages(mock_handler)
+        
+        # Verify response was sent
+        mock_handler.send_response.assert_called_once_with(200)
+        mock_handler.send_header.assert_called_with('Content-Type', 'application/json')
+        mock_handler.end_headers.assert_called_once()
+        
+        # Verify response content
+        response_call = mock_handler.wfile.write.call_args[0][0]
+        response_data = json.loads(response_call.decode('utf-8'))
+        assert response_data['success'] is True
+        assert len(response_data['data']) == 2
+        
+        # Verify message contents
+        for i, msg in enumerate(response_data['data']):
+            assert msg['content'] == test_messages[i]['content']
+            assert msg['author'] == test_messages[i]['username']
+            assert msg['timestamp'] == test_messages[i]['timestamp'].isoformat()
