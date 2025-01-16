@@ -374,11 +374,32 @@ body {
 }
 
 .char-counter {
-    font-size: 0.8em;
-    color: #666;
-    margin-top: 4px;
-    text-align: right;
-    padding-right: 8px;
+    font-size: 0.9em;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: var(--bg-secondary);
+    transition: all 0.2s ease;
+    margin-left: 8px;
+}
+
+.char-counter.warning {
+    background: #fff3dc;
+    color: #92400e;
+}
+
+.char-counter.danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+[data-theme="dark"] .char-counter.warning {
+    background: #78350f;
+    color: #fcd34d;
+}
+
+[data-theme="dark"] .char-counter.danger {
+    background: #7f1d1d;
+    color: #fca5a5;
 }
 
 /* Error states */

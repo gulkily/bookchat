@@ -490,10 +490,22 @@ function setupMessageInput() {
     const charCounter = document.getElementById('js-char-counter');
     
     if (messageForm && messageInput) {
+        const MAX_CHARS = 2000;
+        
         // Update character count on input
         const updateCharCount = () => {
             const count = messageInput.value.length;
-            charCounter.textContent = `Characters: ${count}`;
+            charCounter.textContent = `${count}/${MAX_CHARS}`;
+            
+            // Reset classes
+            charCounter.classList.remove('warning', 'danger');
+            
+            // Add appropriate class based on count
+            if (count > MAX_CHARS * 0.9) { // Over 90%
+                charCounter.classList.add('danger');
+            } else if (count > MAX_CHARS * 0.75) { // Over 75%
+                charCounter.classList.add('warning');
+            }
         };
 
         // Add input event listener for live character counting
@@ -501,11 +513,15 @@ function setupMessageInput() {
         
         // Function to validate and send message
         const validateAndSendMessage = async (content) => {
-            // Ensure content is a string and properly trimmed
-            content = String(content || '').trim();
-            
-            if (!content) {
+            if (content.length === 0) {
                 console.log('Empty content detected, preventing submission');
+                messageInput.classList.add('error');
+                setTimeout(() => messageInput.classList.remove('error'), 2000);
+                return false;
+            }
+            
+            if (content.length > MAX_CHARS) {
+                console.log('Content too long, preventing submission');
                 messageInput.classList.add('error');
                 setTimeout(() => messageInput.classList.remove('error'), 2000);
                 return false;
@@ -517,6 +533,7 @@ function setupMessageInput() {
             
             try {
                 await sendMessage(originalContent);
+                updateCharCount();
                 return true;
             } catch (error) {
                 console.error('Failed to send message:', error);
