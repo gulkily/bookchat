@@ -71,16 +71,9 @@ class FileStorage:
                         logger.error(f"Error reading message file {filename}: {e}")
                         continue
 
-            # Sort messages by timestamp (newest first)
-            messages.sort(key=lambda x: x['_sort_time'], reverse=True)
-            
-            # Remove temporary sorting field
-            for message in messages:
-                del message['_sort_time']
-                
-            # Apply limit if specified
+            # Preserve original order of messages
             if limit is not None:
-                messages = messages[:limit]
+                messages = messages[-limit:]
                 
             return messages
             
