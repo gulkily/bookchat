@@ -268,25 +268,39 @@ class GitManager:
 
     def sync_forks(self):
         """Sync with all forks listed in forks_list.txt."""
-        from sync_forks import clone_or_update_repo
-        
-        forks_file = self.repo_path / "forks_list.txt"
-        if not forks_file.exists():
-            logger.warning("forks_list.txt not found, skipping fork sync")
-            return
-        
-        with open(forks_file, "r") as f:
-            repos = [line.strip() for line in f if line.strip()]
-    
-        # Filter out current repo if it exists
-        if self.repo_name:
-            repos = [repo for repo in repos if self.repo_name not in repo]
-    
-        for repo in repos:
-            try:
-                clone_or_update_repo(repo, "messages")
-            except Exception as e:
-                logger.error(f"Error syncing fork {repo}: {e}")
+        if not self.use_github:
+            return False
+            
+        try:
+            # Get list of forks from GitHub
+            forks = self.repo.get_forks()
+            
+            # Create cloned_repos directory if it doesn't exist
+            self.cloned_repos_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Process each fork
+            for fork in forks:
+                fork_dir = self.cloned_repos_dir / fork.full_name.replace('/', '_')
+                
+                try:
+                    if not fork_dir.exists():
+                        # Clone the fork
+                        subprocess.run(['git', 'clone', fork.clone_url, str(fork_dir)], check=True)
+                    else:
+                        # Pull latest changes
+                        subprocess.run(['git', 'pull'], cwd=str(fork_dir), check=True)
+                except subprocess.CalledProcessError as e:
+                    logger.error(f"Error syncing fork {fork.full_name}: {e}")
+                    continue
+                    
+            return True
+        except Exception as e:
+            logger.error(f"Error syncing forks: {e}")
+            return False
+
+    def sync_with_forks(self):
+        """Alias for sync_forks for backward compatibility."""
+        return self.sync_forks()
 
     def pull_from_github(self):
         """Pull latest changes from GitHub and sync forks."""

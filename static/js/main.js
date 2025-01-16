@@ -146,31 +146,30 @@ function createMessageElement(message) {
             // Handle ISO 8601 dates with timezone offset
             const date = message.createdAt;
             if (date && date !== "No timestamp") {
-                // Try to parse the date, handling both ISO 8601 and other formats
-                try {
-                    // First try to parse as ISO 8601
-                    const messageDate = new Date(date);
-                    if (!isNaN(messageDate.getTime())) {
-                        const options = { hour: '2-digit', minute: '2-digit' };
-                        timestampSpan.textContent = messageDate.toLocaleTimeString([], options);
-                        timestampSpan.title = messageDate.toLocaleString();
-                    } else {
-                        // If not a valid date, just display the raw string
-                        timestampSpan.textContent = date;
-                        timestampSpan.title = date;
-                    }
-                } catch (error) {
-                    console.error('Error parsing date:', error, date);
-                    timestampSpan.textContent = date;
-                    timestampSpan.title = 'Error parsing date';
+                // Parse the date string
+                const messageDate = new Date(date);
+                if (!isNaN(messageDate.getTime())) {
+                    // Format time as HH:MM
+                    const hours = messageDate.getHours().toString().padStart(2, '0');
+                    const minutes = messageDate.getMinutes().toString().padStart(2, '0');
+                    timestampSpan.textContent = `${hours}:${minutes}`;
+                    
+                    // Format full date for tooltip
+                    const month = (messageDate.getMonth() + 1).toString().padStart(2, '0');
+                    const day = messageDate.getDate().toString().padStart(2, '0');
+                    const year = messageDate.getFullYear();
+                    timestampSpan.title = `${year}-${month}-${day} ${hours}:${minutes}`;
+                } else {
+                    timestampSpan.textContent = 'Invalid date';
+                    timestampSpan.title = 'Invalid date format';
                 }
             } else {
-                timestampSpan.textContent = date || 'Unknown time';
-                timestampSpan.title = date || 'Unknown time';
+                timestampSpan.textContent = 'No time';
+                timestampSpan.title = 'No timestamp available';
             }
         } catch (error) {
             console.error('Error formatting date:', error, message.createdAt);
-            timestampSpan.textContent = message.createdAt || 'Invalid date';
+            timestampSpan.textContent = 'Error';
             timestampSpan.title = 'Error parsing date';
         }
     }
