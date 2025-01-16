@@ -12,7 +12,13 @@ class MessageHandler:
     async def handle_get_messages(self, request):
         """Handle GET request for messages."""
         try:
+            # Add more detailed logging
+            logger.info("Attempting to retrieve messages")
             messages = await self.storage.get_messages()
+            
+            # Log number of messages retrieved
+            logger.info(f"Retrieved {len(messages)} messages")
+            
             return {
                 'success': True,
                 'messages': messages or [],  # Ensure messages is always a list
@@ -20,11 +26,13 @@ class MessageHandler:
                 'reactionsEnabled': True
             }
         except Exception as e:
-            logger.error(f"Error getting messages: {e}", exc_info=True)
+            # Log full exception details
+            logger.error(f"Detailed error getting messages: {e}", exc_info=True)
             return {
                 'success': False,
-                'error': str(e),
-                'messages': []  # Return empty list to prevent frontend errors
+                'error': f"Message retrieval failed: {str(e)}",
+                'messages': [],  # Return empty list to prevent frontend errors
+                'details': str(e)  # Add more context for debugging
             }
 
     async def handle_post_message(self, request):

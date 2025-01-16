@@ -25,60 +25,79 @@ class FileStorage:
         """Get all messages, optionally limited to a number."""
         messages = []
         try:
-            for filename in os.listdir(self.messages_dir):
-                if filename.endswith('.txt'):
-                    file_path = self.messages_dir / filename
-                    try:
-                        with open(file_path, 'r') as f:
-                            fcntl.flock(f.fileno(), fcntl.LOCK_SH)
+            # Log start of message retrieval
+            logger.info(f"Starting message retrieval from {self.messages_dir}")
+            
+            # Check if messages directory exists and is readable
+            if not os.path.exists(self.messages_dir):
+                logger.error(f"Messages directory does not exist: {self.messages_dir}")
+                return []
+            
+            if not os.access(self.messages_dir, os.R_OK):
+                logger.error(f"Messages directory is not readable: {self.messages_dir}")
+                return []
+            
+            # Get all .txt files and sort by modification time
+            message_files = sorted(
+                [f for f in os.listdir(self.messages_dir) if f.endswith('.txt')],
+                key=lambda f: os.path.getmtime(self.messages_dir / f)
+            )
+            
+            logger.info(f"Found {len(message_files)} message files")
+            
+            for filename in message_files:
+                file_path = self.messages_dir / filename
+                try:
+                    with open(file_path, 'r') as f:
+                        fcntl.flock(f.fileno(), fcntl.LOCK_SH)
+                        try:
+                            content = f.read()
+                            parts = content.split('\n-- \n', 1)
+                            message_content = parts[0].strip()
+                            
+                            # Parse metadata
+                            metadata = {}
+                            if len(parts) > 1:
+                                for line in parts[1].strip().split('\n'):
+                                    if ':' in line:
+                                        key, value = line.split(':', 1)
+                                        metadata[key.strip().lower()] = value.strip()
+                            
+                            # Parse timestamp to datetime for sorting
                             try:
-                                content = f.read()
-                                parts = content.split('\n-- \n', 1)
-                                message_content = parts[0].strip()
+                                timestamp_str = metadata.get('timestamp')
+                                if not timestamp_str:
+                                    timestamp = datetime.fromtimestamp(os.path.getmtime(file_path))
+                                else:
+                                    timestamp = datetime.fromisoformat(timestamp_str)
+                            except (ValueError, TypeError):
+                                # If timestamp parsing fails, use file modification time
+                                timestamp = datetime.fromtimestamp(os.path.getmtime(file_path))
+                                logger.warning(f"Invalid timestamp in message {file_path}, using file modification time")
                                 
-                                # Parse metadata
-                                metadata = {}
-                                if len(parts) > 1:
-                                    for line in parts[1].strip().split('\n'):
-                                        if ':' in line:
-                                            key, value = line.split(':', 1)
-                                            metadata[key.strip().lower()] = value.strip()
-                                
-                                # Parse timestamp to datetime for sorting
-                                try:
-                                    timestamp_str = metadata.get('timestamp')
-                                    if not timestamp_str:
-                                        timestamp = datetime.now()
-                                    else:
-                                        timestamp = datetime.fromisoformat(timestamp_str)
-                                except (ValueError, TypeError):
-                                    # If timestamp parsing fails, use current time
-                                    timestamp = datetime.now()
-                                    logger.warning(f"Invalid timestamp in message {file_path}, using current time")
-                                    
-                                message = {
-                                    'id': file_path.stem,
-                                    'content': message_content,
-                                    'author': metadata.get('author', 'anonymous'),
-                                    'timestamp': timestamp.isoformat(),
-                                    'verified': metadata.get('verified', 'false'),
-                                    '_sort_time': timestamp  # Temporary field for sorting
-                                }
-                                messages.append(message)
-                            finally:
-                                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
-                    except Exception as e:
-                        logger.error(f"Error reading message file {filename}: {e}")
-                        continue
+                            message = {
+                                'id': file_path.stem,
+                                'content': message_content,
+                                'author': metadata.get('author', 'anonymous'),
+                                'timestamp': timestamp.isoformat(),
+                                'verified': metadata.get('verified', 'false')
+                            }
+                            messages.append(message)
+                        finally:
+                            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                except Exception as e:
+                    logger.error(f"Error reading message file {filename}: {e}", exc_info=True)
+                    continue
 
             # Preserve original order of messages
             if limit is not None:
                 messages = messages[-limit:]
-                
+            
+            logger.info(f"Successfully retrieved {len(messages)} messages")
             return messages
             
         except Exception as e:
-            logger.error(f"Error getting messages: {e}")
+            logger.error(f"Comprehensive error getting messages: {e}", exc_info=True)
             return []
 
     async def save_message(self, author, content, timestamp, metadata=None):
