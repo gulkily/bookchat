@@ -17,6 +17,7 @@ import subprocess
 from jinja2 import Environment, FileSystemLoader
 
 from storage.file_storage import FileStorage
+from git_manager import GitManager
 
 # Configure logging with a more detailed format and multiple levels
 log_format = '%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
@@ -75,6 +76,9 @@ REPO_PATH = os.getenv('REPO_PATH', os.path.abspath(os.path.dirname(__file__)))
 logger.info(f"Initializing storage backend with repo path: {REPO_PATH}")
 storage = FileStorage(REPO_PATH)
 storage.init_storage()
+
+# Initialize git manager
+git_manager = GitManager(REPO_PATH)
 
 class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
     """Custom request handler for the chat application"""
@@ -359,15 +363,40 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
     def handle_username_change(self):
         """Handle username change request"""
         try:
-            # Get new username from request
+            # Get usernames from request
             data = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
-            new_username = data.get('username', '')
+            old_username = data.get('old_username', '')
+            new_username = data.get('new_username', '')
             
             # Verify new username
             if not storage.verify_username(new_username):
-                self.handle_error(400, "Invalid username format")
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                error_response = {
+                    'error': {
+                        'code': 400,
+                        'message': 'Invalid username format. Username must be 3-20 characters long and contain only letters, numbers, and underscores.'
+                    }
+                }
+                self.wfile.write(json.dumps(error_response).encode('utf-8'))
                 return
             
+            # Update username in git manager
+            success, message = git_manager.handle_username_change(old_username, new_username)
+            if not success:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                error_response = {
+                    'error': {
+                        'code': 400,
+                        'message': message
+                    }
+                }
+                self.wfile.write(json.dumps(error_response).encode('utf-8'))
+                return
+                
             # Send success response
             response = {
                 'success': True,
@@ -380,7 +409,16 @@ class ChatRequestHandler(http.server.SimpleHTTPRequestHandler):
             
         except Exception as e:
             logger.error(f"Error handling username change: {e}")
-            self.handle_error(500, str(e))
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            error_response = {
+                'error': {
+                    'code': 500,
+                    'message': 'Internal server error occurred while changing username'
+                }
+            }
+            self.wfile.write(json.dumps(error_response).encode('utf-8'))
 
     def handle_reaction_post(self) -> None:
         """Handle reaction posting"""
