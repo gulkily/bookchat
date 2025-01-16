@@ -244,12 +244,21 @@ class GitManager:
                 check=True
             )
             
-            if not status.stdout.strip():
+            # Check for modified or untracked files
+            status_output = status.stdout.strip()
+            if not status_output or not any(line.startswith(('M', 'A', '??')) for line in status_output.split('\n')):
                 logger.debug(f"No changes to commit for {relative_path}")
                 return
             
+            # Use appropriate commit message based on file type
+            if 'messages' in str(relative_path):
+                commit_message = f'Add message from {author}'
+            elif 'identity/public_keys' in str(relative_path):
+                commit_message = f'Update user key for {author}'
+            else:
+                commit_message = f'Update {relative_path} by {author}'
+            
             # Commit the change
-            commit_message = f'Update user key for {author}'
             self._run_git_command(['git', 'commit', '-m', commit_message])
             
             # Push to GitHub
