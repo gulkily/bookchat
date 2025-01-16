@@ -70,13 +70,25 @@ class ChatApp {
     
     async loadMessages() {
         try {
+            console.log('Attempting to load messages from server');
+            
             const response = await fetch('/messages');
+            
+            // Log raw response details
+            console.log('Response status:', response.status);
+            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+            
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorText = await response.text();
+                console.error('Server error response:', errorText);
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
             }
             
             const result = await response.json();
+            console.log('Parsed server response:', result);
+            
             if (!result.success) {
+                console.error('Server returned unsuccessful response:', result);
                 throw new Error(result.error || 'Failed to load messages');
             }
             
@@ -84,12 +96,15 @@ class ChatApp {
             this.state.messages = result.messages || [];
             this.state.settings.messageVerificationEnabled = result.messageVerificationEnabled || false;
             
+            console.log(`Loaded ${this.state.messages.length} messages`);
+            
             // Update UI
             await this.updateUI();
             
         } catch (error) {
-            console.error('Error loading messages:', error);
-            this.showError('Failed to load messages');
+            console.error('Detailed error loading messages:', error);
+            console.error('Error stack:', error.stack);
+            this.showError(`Failed to load messages: ${error.message}`);
         }
     }
     
