@@ -1,67 +1,36 @@
-"""Main module for the chat server."""
+"""Main server module."""
 
-import asyncio
 import logging
-import os
-import webbrowser
-from typing import Optional
-
 from aiohttp import web
-
-from server.config import (
-    HOST,
-    PORT,
-    STATIC_DIR
-)
-from server.handler import ChatRequestHandler
-from server.storage.factory import create_storage
+from server.config import get_config
+from server.handler_methods import handle_message_post, handle_messages_get
+from server.storage import init_storage
 
 logger = logging.getLogger(__name__)
-
-def open_browser(url: str) -> None:
-    """Open the browser to the specified URL."""
-    try:
-        webbrowser.open(url)
-    except Exception as e:
-        logger.error(f'Error opening browser: {e}')
 
 async def init_app() -> web.Application:
     """Initialize the application."""
     app = web.Application()
     
-    # Create storage
-    storage = create_storage()
-    app['storage'] = storage
-
-    # Setup routes
-    app.router.add_get('/messages', lambda r: ChatRequestHandler(r).handle_request(r))
-    app.router.add_post('/messages', lambda r: ChatRequestHandler(r).handle_request(r))
-    app.router.add_get('/status', lambda r: ChatRequestHandler(r).handle_request(r))
+    # Load config
+    config = get_config()
     
-    # Serve static files
-    app.router.add_static('/', STATIC_DIR)
-
+    # Initialize storage with git if configured
+    app['storage'] = init_storage(
+        config.data_dir,
+        use_git=config.get('USE_GIT_STORAGE', False)
+    )
+    
+    # Setup routes
+    app.router.add_post('/api/messages', handle_message_post)
+    app.router.add_get('/api/messages', handle_messages_get)
+    
     return app
 
-def main(port: Optional[int] = None) -> None:
-    """Start the server."""
-    try:
-        # Create and configure app
-        app = asyncio.run(init_app())
-        
-        # Use provided port or default
-        server_port = port or PORT
-        
-        # Start server
-        web.run_app(
-            app,
-            host=HOST,
-            port=server_port,
-            access_log=logger
-        )
-    except Exception as e:
-        logger.error(f'Failed to start server: {e}')
-        raise
+def main():
+    """Run the server."""
+    app = asyncio.run(init_app())
+    web.run_app(app)
 
 if __name__ == '__main__':
     main()

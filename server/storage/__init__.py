@@ -26,3 +26,27 @@ class StorageBackend(ABC):
     def get_message_by_id(self, message_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve a specific message by ID."""
         pass
+
+
+"""Storage package initialization."""
+
+from pathlib import Path
+from typing import Union
+
+from server.storage.file_storage import FileStorage
+from server.storage.git_storage import GitStorage
+
+def init_storage(data_dir: str, use_git: bool = False) -> Union[FileStorage, GitStorage]:
+    """Initialize storage with the given data directory.
+    
+    Args:
+        data_dir: Directory to store data in
+        use_git: Whether to use git-based storage
+        
+    Returns:
+        Storage instance
+    """
+    Path(data_dir).mkdir(parents=True, exist_ok=True)
+    if use_git:
+        return GitStorage(data_dir)
+    return FileStorage(data_dir)
