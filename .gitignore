@@ -49,8 +49,5 @@ keys/*.pub
 .coverage
 htmlcov/
 
-# Test message files
-messages/*.txt
-
 # Git
 cloned_repos/
