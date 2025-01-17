@@ -1,5 +1,6 @@
 """Main server module."""
 
+import asyncio
 import logging
 from aiohttp import web
 from server.config import get_config
@@ -17,13 +18,13 @@ async def init_app() -> web.Application:
     
     # Initialize storage with git if configured
     app['storage'] = init_storage(
-        config.data_dir,
+        config['STORAGE_DIR'],
         use_git=config.get('USE_GIT_STORAGE', False)
     )
     
     # Setup routes
-    app.router.add_post('/api/messages', handle_message_post)
-    app.router.add_get('/api/messages', serve_messages)
+    app.router.add_post('/messages', handle_message_post)
+    app.router.add_get('/messages', serve_messages)
     
     return app
 

@@ -40,7 +40,8 @@ class ChatRequestHandler(BaseHTTPRequestHandler):
             # Route request based on path
             if parsed_url.path == '/messages':
                 try:
-                    response = await self.message_handler.handle_get_messages(self)  # Pass self to match production
+                    # Match production server implementation
+                    response = await self.message_handler.handle_get_messages()
                     # Ensure response is a dictionary with 'success' key
                     if not isinstance(response, dict) or 'success' not in response:
                         response = {

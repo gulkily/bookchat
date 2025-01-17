@@ -100,7 +100,7 @@ class ChatRequestHandler(BaseHTTPRequestHandler):
             # Route request based on path
             if parsed_url.path == '/messages':
                 try:
-                    response = await self.message_handler.handle_get_messages(self)
+                    response = await self.message_handler.handle_get_messages()  # Don't pass self
                     # Ensure response is a dictionary with 'success' key
                     if not isinstance(response, dict) or 'success' not in response:
                         response = {
