@@ -55,3 +55,19 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 
 # Create a Path object for the project root
 PROJECT_ROOT = Path(__file__).parent.parent
+
+def get_config():
+    """Get the configuration as a dictionary."""
+    return {
+        'PORT': PORT,
+        'HOST': HOST,
+        'DEBUG': DEBUG,
+        'STORAGE_DIR': STORAGE_DIR,
+        'STATIC_DIR': STATIC_DIR,
+        'MESSAGE_VERIFICATION': MESSAGE_VERIFICATION,
+        'ENABLE_FORK_SYNC': ENABLE_FORK_SYNC,
+        'GITHUB_TOKEN': GITHUB_TOKEN,
+        'GITHUB_REPO_OWNER': GITHUB_REPO_OWNER,
+        'GITHUB_REPO_NAME': GITHUB_REPO_NAME,
+        'data_dir': STORAGE_DIR,  # alias for backward compatibility
+    }
