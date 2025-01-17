@@ -1,22 +1,57 @@
-"""Configuration settings for the BookChat server."""
+"""Configuration module."""
 
 import os
-from dotenv import load_dotenv
+import logging
+from pathlib import Path
 
-# Load environment variables
-load_dotenv()
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s %(name)s:%(filename)s:%(lineno)d %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
 
-# Server configuration
-PORT = int(os.getenv('PORT', 8000))
-REPO_PATH = os.getenv('REPO_PATH', os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
+# Environment variable names
+ENV_PORT = 'PORT'
+ENV_HOST = 'HOST'
+ENV_DEBUG = 'DEBUG'
+ENV_STORAGE_DIR = 'STORAGE_DIR'
+ENV_STATIC_DIR = 'STATIC_DIR'
+ENV_DATA_DIR = 'DATA_DIR'
+ENV_MESSAGE_VERIFICATION = 'MESSAGE_VERIFICATION'
+ENV_ENABLE_FORK_SYNC = 'ENABLE_FORK_SYNC'
+ENV_GITHUB_TOKEN = 'GITHUB_TOKEN'
+ENV_GITHUB_REPO_OWNER = 'GITHUB_REPO_OWNER'
+ENV_GITHUB_REPO_NAME = 'GITHUB_REPO_NAME'
 
-# Feature flags
-MESSAGE_VERIFICATION_ENABLED = os.getenv('MESSAGE_VERIFICATION_ENABLED', 'false').lower() == 'true'
-REACTIONS_ENABLED = os.getenv('REACTIONS_ENABLED', 'false').lower() == 'true'
+# Default values
+DEFAULT_PORT = 8080
+DEFAULT_HOST = '0.0.0.0'
+DEFAULT_DEBUG = False
+DEFAULT_STORAGE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
+DEFAULT_STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
 
-# Static file configuration
-STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
-TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
+# Get values from environment variables with defaults
+PORT = int(os.getenv(ENV_PORT, DEFAULT_PORT))
+HOST = os.getenv(ENV_HOST, DEFAULT_HOST)
+DEBUG = os.getenv(ENV_DEBUG, str(DEFAULT_DEBUG)).lower() == 'true'
+STORAGE_DIR = os.getenv(ENV_STORAGE_DIR, DEFAULT_STORAGE_DIR)
+STATIC_DIR = os.getenv(ENV_STATIC_DIR, DEFAULT_STATIC_DIR)
 
-# Storage configuration
-DEFAULT_STORAGE_TYPE = 'git'
+# Message verification settings
+MESSAGE_VERIFICATION = os.getenv(ENV_MESSAGE_VERIFICATION, 'True').lower() == 'true'
+
+# GitHub settings
+ENABLE_FORK_SYNC = os.getenv(ENV_ENABLE_FORK_SYNC, 'False').lower() == 'true'
+GITHUB_TOKEN = os.getenv(ENV_GITHUB_TOKEN)
+GITHUB_REPO_OWNER = os.getenv(ENV_GITHUB_REPO_OWNER)
+GITHUB_REPO_NAME = os.getenv(ENV_GITHUB_REPO_NAME)
+
+# Create necessary directories
+os.makedirs(STORAGE_DIR, exist_ok=True)
+os.makedirs(STATIC_DIR, exist_ok=True)
+
+# Create a Path object for the project root
+PROJECT_ROOT = Path(__file__).parent.parent

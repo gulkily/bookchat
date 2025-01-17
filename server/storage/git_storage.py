@@ -11,7 +11,7 @@ import subprocess
 import traceback
 
 from storage import StorageBackend
-from git_manager import GitManager
+from storage.git_manager import GitManager
 from key_manager import KeyManager  # Import KeyManager
 
 # Get logger for this module

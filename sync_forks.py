@@ -16,7 +16,7 @@ fh = logging.FileHandler('sync_forks.log')
 fh.setLevel(logging.DEBUG)
 # create console handler with a higher log level
 ch = logging.StreamHandler()
-ch.setLevel(logging.ERROR)
+ch.setLevel(logging.INFO)  # Changed from ERROR to INFO to show progress
 # create formatter and add it to the handlers
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 fh.setFormatter(formatter)
@@ -68,11 +68,12 @@ def clone_or_update_repo(repo_url, subdir):
     local_path = base_dir / repo_name
 
     if not local_path.exists():
-        logger.info(f"Cloning repository: {repo_url}")
+        logger.info(f" Cloning repository: {repo_url}")
         # First, do a full clone
         run_command(["git", "clone", "--filter=blob:none", "--no-checkout", repo_url, str(local_path)])
         run_command(["git", "config", "core.sparseCheckout", "true"], cwd=local_path)
         
+        logger.info(f" Setting up sparse checkout for directory: {subdir}")
         # Create sparse-checkout file with the exact path
         sparse_checkout_dir = local_path / ".git" / "info"
         sparse_checkout_dir.mkdir(parents=True, exist_ok=True)
@@ -132,11 +133,15 @@ def copy_messages_to_main(base_dir):
     main_messages_dir = Path("messages")
     main_messages_dir.mkdir(exist_ok=True)
     
+    logger.info(" Starting message synchronization process...")
+    
     # Track message hashes to avoid duplicates
     seen_hashes: Set[str] = set()
     
     # First, load existing messages in main directory and rename them to new format
     existing_files = list(main_messages_dir.glob("*.json"))
+    if existing_files:
+        logger.info(f" Processing {len(existing_files)} existing messages in main directory...")
     for existing_file in existing_files:
         try:
             with open(existing_file, 'r') as f:
@@ -178,16 +183,21 @@ def copy_messages_to_main(base_dir):
     duplicate_count = 0
     copied_count = 0
     
-    for repo_dir in base_dir.iterdir():
-        if not repo_dir.is_dir():
-            continue
-            
+    repo_dirs = [d for d in base_dir.iterdir() if d.is_dir()]
+    logger.info(f" Found {len(repo_dirs)} repositories to process")
+    
+    for repo_dir in repo_dirs:
         messages_dir = repo_dir / "messages"
         if not messages_dir.exists():
+            logger.info(f" Skipping {repo_dir.name} - no messages directory found")
             continue
             
-        logger.info(f"Processing messages from {repo_dir.name}")
-        for message_file in messages_dir.glob("*.json"):
+        logger.info(f" Processing messages from {repo_dir.name}")
+        message_files = list(messages_dir.glob("*.json"))
+        file_count = len(message_files)
+        logger.info(f" Found {file_count} message files in {repo_dir.name}")
+        
+        for i, message_file in enumerate(message_files, 1):
             total_messages += 1
             try:
                 # Read message content
@@ -200,6 +210,8 @@ def copy_messages_to_main(base_dir):
                 # Skip if we've seen this message before
                 if message_hash in seen_hashes:
                     duplicate_count += 1
+                    if duplicate_count % 10 == 0:  # Log every 10th duplicate
+                        logger.debug(f"  Found {duplicate_count} duplicate messages so far")
                     continue
                 
                 # Add source repo info to message metadata
@@ -228,8 +240,12 @@ def copy_messages_to_main(base_dir):
             except Exception as e:
                 logger.error(f"Error processing {message_file}: {e}")
     
-    logger.info(f"Message sync complete: {total_messages} total messages, "
-               f"{duplicate_count} duplicates skipped, {copied_count} unique messages copied")
+    logger.info(f"""
+ Synchronization complete:
+   Total messages processed: {total_messages}
+   New messages copied: {copied_count}
+   Duplicates skipped: {duplicate_count}
+""")
 
 def main():
     if not Path(forks_file).exists():

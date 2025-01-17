@@ -1,6 +1,5 @@
 ff
 -- 
 Verified: true
-Reactions: {}
 Author: anonymous
 Timestamp: 2025-01-16T13:20:47.765923

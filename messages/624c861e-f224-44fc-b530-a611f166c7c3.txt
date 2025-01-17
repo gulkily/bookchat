@@ -1,6 +1,5 @@
 13452435245
 -- 
 Verified: true
-Reactions: {}
 Author: anonymous
 Timestamp: 2025-01-16T13:18:46.587555

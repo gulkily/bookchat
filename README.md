@@ -16,10 +16,12 @@ A lightweight, Git-backed web-based messaging application that allows users to c
 ## Tech Stack
 
 - Backend: Python (No frameworks)
-- Storage: Git-based JSON files
+- Storage: Git-based and File-based JSON storage
 - Frontend: HTML, CSS, JavaScript (Vanilla)
 - Version Control: Git (via GitHub API)
 - Authentication: GitHub OAuth
+- Logging: Comprehensive debug and application logging
+- Testing: pytest framework
 
 ## Project Structure
 
@@ -27,6 +29,7 @@ A lightweight, Git-backed web-based messaging application that allows users to c
 bookchat/
 ├── README.md
 ├── .env
+├── server/                 # Server-related modules
 ├── static/
 │   ├── css/
 │   │   └── style.css
@@ -34,13 +37,22 @@ bookchat/
 │       └── main.js
 ├── templates/
 │   ├── index.html
-│   └── login.html
+│   ├── chat.html
+│   └── status.html
 ├── storage/
 │   ├── __init__.py
 │   ├── factory.py
-│   └── git_storage.py
+│   ├── git_storage.py
+│   ├── file_storage.py
+│   └── archive_manager.py
+├── messages/              # Message storage directory
+├── identity/             # Identity management
 ├── server.py
-└── requirements.txt
+├── git_manager.py        # Git operations handler
+├── key_manager.py        # Key management utilities
+├── requirements.txt
+├── requirements-dev.txt  # Development dependencies
+└── requirements-test.txt # Testing dependencies
 ```
 
 ## Setup Instructions
@@ -62,16 +74,31 @@ bookchat/
    pip install -r requirements.txt
    ```
 
-4. Configure storage backend in `.env`:
+4. Configure environment in `.env`:
    ```bash
-   # Required settings
+   # GitHub Configuration (optional)
+   SYNC_TO_GITHUB=false          # Enable GitHub synchronization
    GITHUB_TOKEN=your_github_token
-   GITHUB_REPO=username/repo
+   GITHUB_REPO=username/repository
 
-   # Optional settings
-   PORT=8000             # Default: 8000
-   REPO_PATH=/path/to/repo  # Default: current directory
-   SYNC_TO_GITHUB=true   # Default: false
+   # Server Configuration
+   PORT=8000                     # Default: 8000
+
+   # Key Management (optional)
+   KEYS_DIR=/path/to/keys        # Default: repo/keys
+   SIGN_MESSAGES=true           # Enable message signing
+
+   # Feature Flags
+   MESSAGE_VERIFICATION=true    # Enable message verification
+   ENABLE_FORK_SYNC=false      # Enable GitHub fork syncing
+
+   # Archive Settings
+   ARCHIVE_INTERVAL_SECONDS=3600
+   ARCHIVE_DAYS_THRESHOLD=30
+   ARCHIVE_MAX_SIZE_MB=100
+
+   # Logging
+   BOOKCHAT_DEBUG=true         # Enable debug logging
    ```
 
 5. Run the server:
@@ -81,23 +108,30 @@ bookchat/
 
 ## Deployment Options
 
-BookChat supports multiple deployment options:
+BookChat supports multiple deployment configurations:
 
-### 1. GitHub Pages (Serverless)
-- Use Git storage backend
-- Host static files on GitHub Pages
-- Messages stored directly in the Git repository
-- Perfect for small to medium-sized deployments
+### 1. Standard Server Deployment
+- Run as a standalone Python server
+- Support for both Git and File-based storage backends
+- Full feature set including message signing and verification
+- Suitable for most deployments
+- Configurable logging and debugging
 
-### 2. Traditional Server
-- Use Git storage
-- Deploy on any Python-compatible hosting platform
-- Suitable for larger deployments with more control
+### 2. GitHub-Integrated Deployment
+- Enable GitHub synchronization for message persistence
+- Automatic fork synchronization support
+- Message archiving capabilities
+- Perfect for distributed team setups
+- Requires valid GitHub credentials
 
-### 3. Serverless Platforms
-- Use Git storage backend
-- Deploy on platforms like Vercel, Netlify, or Cloudflare Pages
-- Great for scalable, maintenance-free deployments
+### 3. Local Development Setup
+- Quick setup with file-based storage
+- Debug logging for development
+- Support for testing environment
+- Includes development and testing dependencies
+- Ideal for contributing to the project
+
+Each deployment option can be configured through environment variables to enable/disable specific features as needed.
 
 ## Logging and Debugging
 

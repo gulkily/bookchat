@@ -152,35 +152,11 @@ class ChatRequestHandler(BaseHTTPRequestHandler):
             if parsed_url.path == '/messages':
                 response = await self.message_handler.handle_post_message(self)
                 self.send_json_response(response)
-            elif parsed_url.path == '/reactions':
-                response = await self.message_handler.handle_reaction(self)
-                self.send_json_response(response)
             else:
                 self.send_error(404, "Path not found")
                 
         except Exception as e:
             logging.error(f"Error handling POST request: {e}")
-            self.send_error(500, str(e))
-
-    def do_PUT(self):
-        """Handle PUT requests."""
-        asyncio.run(self._async_do_PUT())
-
-    async def _async_do_PUT(self):
-        """Async handler for PUT requests."""
-        try:
-            # Parse URL
-            parsed_url = urlparse(self.path)
-            
-            # Route request based on path
-            if parsed_url.path == '/messages':
-                response = await self.message_handler.handle_put_message(self)
-                self.send_json_response(response)
-            else:
-                self.send_error(404, "Path not found")
-                
-        except Exception as e:
-            logging.error(f"Error handling PUT request: {e}")
             self.send_error(500, str(e))
 
     def _get_content_type(self, path):
@@ -238,38 +214,37 @@ class ChatRequestHandler(BaseHTTPRequestHandler):
                 logging.error(f"Error serving file {filepath}: {str(e)}")
                 self.send_error(500, str(e))
 
-def run(server_class=HTTPServer, handler_class=ChatRequestHandler, port=None, open_url=True):
-    """Run the server."""
-    # Initialize storage and message handler
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    storage = FileStorage(base_dir)
-    
-    # Find available port if none specified
-    if port is None:
-        port = find_available_port()
-    
+class ChatServer(HTTPServer):
+    """Chat server implementation."""
+
+    def __init__(self, server_address, RequestHandlerClass):
+        """Initialize the server."""
+        super().__init__(server_address, RequestHandlerClass)
+        self.storage = FileStorage(os.path.dirname(os.path.abspath(__file__)))
+        self.message_handler = MessageHandler(self.storage)
+
+    def serve_forever(self):
+        """Start the server."""
+        logging.info(f'Starting server on {self.server_address}')
+        super().serve_forever()
+
+    def shutdown(self):
+        """Stop the server."""
+        logging.info('Shutting down server')
+        super().shutdown()
+
+def run_server():
+    """Run the chat server."""
     try:
-        # Create server
-        server_address = ('', port)
-        httpd = server_class(server_address, handler_class)
-        
-        # Attach message handler to server
-        httpd.message_handler = MessageHandler(storage)
-        
-        url = f'http://localhost:{port}'
-        print(f'Server started at {url}')
-        
-        # Open browser in a separate thread
-        if open_url:
-            threading.Thread(target=open_browser, args=(url,), daemon=True).start()
-        
-        httpd.serve_forever()
-    except OSError as e:
-        if port is not None:
-            # If specific port was requested but failed, try finding another
-            print(f"Port {port} not available, finding another port...")
-            return run(server_class, handler_class, None, open_url)
-        raise e
+        server = ChatServer(('localhost', 8001), ChatRequestHandler)
+        threading.Thread(target=open_browser, args=('http://localhost:8001',), daemon=True).start()
+        server.serve_forever()
+    except KeyboardInterrupt:
+        logging.info('Server stopped by user')
+        server.shutdown()
+    except Exception as e:
+        logging.error(f'Server error: {e}')
+        raise
 
 if __name__ == '__main__':
-    run()
+    run_server()

@@ -1,71 +1,67 @@
-"""Main server module."""
+"""Main module for the chat server."""
 
+import asyncio
 import logging
 import os
-import signal
-import sys
-import threading
-from http.server import ThreadingHTTPServer
-from pathlib import Path
+import webbrowser
+from typing import Optional
 
-from server import config
+from aiohttp import web
+
+from server.config import (
+    HOST,
+    PORT,
+    STATIC_DIR
+)
 from server.handler import ChatRequestHandler
-from server.utils import find_available_port, open_browser, ensure_directories
-from storage.factory import create_storage
+from server.storage.factory import create_storage
 
 logger = logging.getLogger(__name__)
 
-def setup_signal_handlers(server):
-    """Set up signal handlers for graceful shutdown."""
-    def signal_handler(signum, frame):
-        logger.info("Shutting down server...")
-        server.shutdown()
-        sys.exit(0)
-
-    # Only set up signal handlers in the main thread
-    if threading.current_thread() is threading.main_thread():
-        signal.signal(signal.SIGINT, signal_handler)
-        signal.signal(signal.SIGTERM, signal_handler)
-
-def main(open_browser_on_start=True):
-    """Start the server.
-    
-    Args:
-        open_browser_on_start: If True, opens the browser after server starts.
-                             Set to False in test environments.
-    """
-    # Ensure required directories exist
-    ensure_directories()
-
-    # Initialize storage backend
-    logger.info(f"Initializing storage backend with repo path: {config.REPO_PATH}")
-    storage = create_storage()
-
-    # Find available port if not specified
-    port = int(os.environ.get('PORT', find_available_port()))
-    
-    # Create server
-    server = ThreadingHTTPServer(('', port), ChatRequestHandler)
-    server.storage = storage
-
-    # Set up signal handlers
-    setup_signal_handlers(server)
-
-    # Start server
-    logger.info(f"Starting server on port {port}")
-    server_url = f'http://localhost:{port}'
-    
-    if open_browser_on_start:
-        open_browser(server_url)
-    
+def open_browser(url: str) -> None:
+    """Open the browser to the specified URL."""
     try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        logger.info("Server stopped by user")
+        webbrowser.open(url)
     except Exception as e:
-        logger.error(f"Server error: {e}")
-    finally:
-        server.server_close()
+        logger.error(f'Error opening browser: {e}')
+
+async def init_app() -> web.Application:
+    """Initialize the application."""
+    app = web.Application()
+    
+    # Create storage
+    storage = create_storage()
+    app['storage'] = storage
+
+    # Setup routes
+    app.router.add_get('/messages', lambda r: ChatRequestHandler(r).handle_request(r))
+    app.router.add_post('/messages', lambda r: ChatRequestHandler(r).handle_request(r))
+    app.router.add_get('/status', lambda r: ChatRequestHandler(r).handle_request(r))
+    
+    # Serve static files
+    app.router.add_static('/', STATIC_DIR)
+
+    return app
+
+def main(port: Optional[int] = None) -> None:
+    """Start the server."""
+    try:
+        # Create and configure app
+        app = asyncio.run(init_app())
+        
+        # Use provided port or default
+        server_port = port or PORT
+        
+        # Start server
+        web.run_app(
+            app,
+            host=HOST,
+            port=server_port,
+            access_log=logger
+        )
+    except Exception as e:
+        logger.error(f'Failed to start server: {e}')
+        raise
 
 if __name__ == '__main__':
     main()
