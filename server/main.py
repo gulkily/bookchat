@@ -3,7 +3,7 @@
 import logging
 from aiohttp import web
 from server.config import get_config
-from server.handler_methods import handle_message_post, handle_messages_get
+from server.handler_methods import handle_message_post, serve_messages
 from server.storage import init_storage
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ async def init_app() -> web.Application:
     
     # Setup routes
     app.router.add_post('/api/messages', handle_message_post)
-    app.router.add_get('/api/messages', handle_messages_get)
+    app.router.add_get('/api/messages', serve_messages)
     
     return app
 
