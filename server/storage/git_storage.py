@@ -36,15 +36,6 @@ class GitStorage(StorageBackend):
         public_keys_dir = os.environ.get('PUBLIC_KEYS_DIR', str(self.repo_path / 'identity/public_keys'))
         self.key_manager = KeyManager(private_keys_dir, public_keys_dir)
 
-        # Initialize message archiver
-        from storage.archive_manager import MessageArchiver
-        archive_dir = self.repo_path / 'archives'
-        self.archiver = MessageArchiver(
-            db_path=str(self.repo_path / 'messages.db'),
-            archive_dir=str(archive_dir),
-            git_manager=self.git_manager
-        )
-        
         logger.debug(f"Messages directory: {self.messages_dir}")
         
         # Check if messages directory exists
@@ -274,14 +265,3 @@ class GitStorage(StorageBackend):
         except Exception as e:
             logger.error(f"Error retrieving message {message_id}: {e}\n{traceback.format_exc()}")
             return None
-
-    def archive_old_messages(self, reference_time: datetime) -> Optional[str]:
-        """Archive old messages using the message archiver.
-        
-        Args:
-            reference_time: Current time to use as reference for archiving
-            
-        Returns:
-            Optional[str]: Path to created archive if messages were archived, None otherwise
-        """
-        return self.archiver.archive_messages(reference_time)

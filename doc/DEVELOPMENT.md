@@ -27,14 +27,28 @@ This guide provides information for developers who want to contribute to or exte
 
 ```
 bookchat/
-├── server.py           # Main server implementation
-├── git_manager.py      # Git and key management
-├── storage/           # Storage backend implementations
+├── server/
+│   ├── storage/
+│   │   ├── __init__.py
+│   │   ├── file_storage.py
+│   │   ├── git_storage.py
+│   │   └── git_manager.py
 │   ├── __init__.py
-│   ├── base.py       # Abstract storage interface
-│   ├── factory.py    # Storage factory
-│   └── git.py        # Git-based storage implementation
-├── static/           # Frontend assets
+│   ├── config.py
+│   ├── handler.py
+│   ├── handler_methods.py
+│   ├── logger.py
+│   ├── main.py
+│   ├── message_handler.py
+│   └── utils.py
+└── tests/
+    ├── __init__.py
+    ├── test_config.py
+    ├── test_file_storage.py
+    ├── test_git_storage.py
+    ├── test_handler_methods.py
+    └── test_message_handler.py
+└── static/           # Frontend assets
 │   ├── css/
 │   └── js/
 └── templates/        # HTML templates
@@ -62,9 +76,9 @@ class BaseStorage:
 ```
 
 To implement a new storage backend:
-1. Create a new class in `storage/`
+1. Create a new class in `server/storage/`
 2. Inherit from `BaseStorage`
-3. Register in `storage/factory.py`
+3. Register in `server/storage/factory.py`
 
 ### 2. Message Handling
 
@@ -176,9 +190,9 @@ class GitManager:
 
 ### Adding a New Storage Backend
 
-1. Create new class in `storage/`
+1. Create new class in `server/storage/`
 2. Implement required interface methods
-3. Add to factory in `storage/factory.py`
+3. Add to factory in `server/storage/factory.py`
 4. Add configuration options
 5. Write tests
 6. Update documentation

@@ -1,34 +1,34 @@
 # Changelog
 
-All notable changes to the BookChat project will be documented in this file.
+All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
 ### Added
-- Git-based storage system with GitHub integration
-- Message signing and verification
-- Public key management
-- Real-time message updates
-- Basic user authentication
-- GitHub OAuth integration
-- Message history with Git version control
-- Configurable message retention
-- Improved error handling and logging
+- Flexible message file format with headers anywhere in file
+- Support for Git-based storage with version control
+- Basic chat functionality with real-time updates
 
 ### Changed
-- Improved message formatting
-- Enhanced security features
-- Better date handling
-- More robust error recovery
-- Cleaner code organization
+- Standardized on 'author' field throughout codebase
+- Simplified storage layer to use direct initialization
+- Improved message validation and error handling
 
-### Fixed
-- Message timestamp display issues
-- User authentication edge cases
-- File handling race conditions
-- Error handling improvements
+### Removed
+- Removed archive manager functionality
+- Removed storage factory pattern
+- Simplified project structure
+
+## [0.1.0] - 2025-01-17
+
+### Added
+- Initial release
+- Basic messaging functionality
+- File-based storage
+- Simple web interface
 
 ## [1.0.0] - 2025-01-14
 ### Added
@@ -77,3 +77,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.0.0]: https://github.com/yourusername/bookchat/compare/v0.9.0...v1.0.0
 [0.9.0]: https://github.com/yourusername/bookchat/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/yourusername/bookchat/releases/tag/v0.8.0
+[0.1.0]: https://github.com/yourusername/bookchat/releases/tag/v0.1.0
