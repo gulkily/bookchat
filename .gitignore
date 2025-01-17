@@ -45,5 +45,12 @@ logs/
 keys/*.pem
 keys/*.pub
 
+# Test coverage
+.coverage
+htmlcov/
+
+# Test message files
+messages/*.txt
+
 # Git
 cloned_repos/
