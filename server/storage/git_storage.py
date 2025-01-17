@@ -10,9 +10,9 @@ import uuid
 import subprocess
 import traceback
 
-from storage import StorageBackend
-from storage.git_manager import GitManager
-from key_manager import KeyManager  # Import KeyManager
+from server.storage import StorageBackend
+from server.storage.git_manager import GitManager
+from server.key_manager import KeyManager  # Import KeyManager
 
 # Get logger for this module
 logger = logging.getLogger(__name__)
