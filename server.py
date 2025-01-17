@@ -13,7 +13,7 @@ from urllib.parse import urlparse, parse_qs
 from datetime import datetime
 from pathlib import Path
 
-from storage.file_storage import FileStorage
+from server.storage.file_storage import FileStorage
 from server.message_handler import MessageHandler
 
 # Configure logging
