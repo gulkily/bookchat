@@ -47,10 +47,9 @@ async def handle_message_post(request):
     try:
         data = await request.json()
         content = data.get('content', '').strip()
-        # Accept either username or author in request
-        username = data.get('username', '') or data.get('author', '').strip()
+        author = data.get('author', '') or data.get('username', '').strip()
 
-        if not content or not username:
+        if not content or not author:
             return web.json_response({
                 'success': False,
                 'error': 'Missing required fields'
@@ -60,7 +59,7 @@ async def handle_message_post(request):
         message_handler = MessageHandler(request.app['storage'])
         response = await message_handler.handle_post_message({
             'content': content,
-            'username': username
+            'author': author
         })
 
         if isinstance(response, dict) and not response.get('success', True):

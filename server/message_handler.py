@@ -29,21 +29,21 @@ class MessageHandler:
         return {
             'id': message['id'],
             'content': message['content'],
-            'author': message['username'],
+            'author': message['author'],
             'timestamp': message['timestamp']
         }
     
-    async def create_message(self, content, username='anonymous', timestamp=None):
+    async def create_message(self, content, author='anonymous', timestamp=None):
         """Create a new message."""
-        timestamp = timestamp or '2025-01-17T14:31:00-05:00'  # Use provided time
+        timestamp = timestamp or '2025-01-17T14:51:18-05:00'  # Use provided time
         message = {
             'id': await self.storage.save_message({
                 'content': content,
-                'username': username,
+                'author': author,
                 'timestamp': timestamp
             }),
             'content': content,
-            'username': username,
+            'author': author,
             'timestamp': timestamp
         }
         return message
@@ -92,10 +92,10 @@ class MessageHandler:
                         raise
                 
             content = request_data.get('content')
-            username = request_data.get('username') or request_data.get('author', 'anonymous')
+            author = request_data.get('author', 'anonymous')
             timestamp = request_data.get('timestamp')
             
-            logger.info(f"Got content: {content}, username: {username}, timestamp: {timestamp}")
+            logger.info(f"Got content: {content}, author: {author}, timestamp: {timestamp}")
             
             if not content:
                 return {
@@ -103,7 +103,7 @@ class MessageHandler:
                     'error': 'Missing content field'
                 }
             
-            message = await self.create_message(content=content, username=username, timestamp=timestamp)
+            message = await self.create_message(content=content, author=author, timestamp=timestamp)
             logger.info(f"Created message: {message}")
             response = {
                 'success': True,
@@ -137,7 +137,7 @@ def get_messages():
                     elif line.startswith('Content: '):
                         message_data['content'] = line[9:]
                     elif line.startswith('Username: '):
-                        message_data['username'] = line[10:]
+                        message_data['author'] = line[10:]
                     elif line.startswith('Timestamp: '):
                         message_data['timestamp'] = line[11:]
                 messages.append(message_data)
@@ -147,7 +147,7 @@ def get_messages():
 
     return sorted(messages, key=lambda x: x.get('timestamp', ''))
 
-def create_message(content, username='anonymous', timestamp=None):
+def create_message(content, author='anonymous', timestamp=None):
     """Create a new message."""
     message_id = str(uuid.uuid4())
     timestamp = timestamp or datetime.now().isoformat()
@@ -157,7 +157,7 @@ def create_message(content, username='anonymous', timestamp=None):
     
     message_path = messages_dir / f"{message_id}.txt"
     
-    message_content = f"ID: {message_id}\nContent: {content}\nUsername: {username}\nTimestamp: {timestamp}"
+    message_content = f"ID: {message_id}\nContent: {content}\nAuthor: {author}\nTimestamp: {timestamp}"
     
     with open(message_path, 'w', encoding='utf-8') as f:
         f.write(message_content)
@@ -165,7 +165,7 @@ def create_message(content, username='anonymous', timestamp=None):
     return {
         'id': message_id,
         'content': content,
-        'username': username,
+        'author': author,
         'timestamp': timestamp
     }
 
@@ -176,10 +176,10 @@ def handle_post_message(request_data):
     
     content = request_data.get('content')
     # Accept either username or author in request
-    username = request_data.get('username') or request_data.get('author', 'anonymous')
+    author = request_data.get('author', 'anonymous')
     
     if not content:
         return {'error': 'Message content is required'}, 400
     
-    message = create_message(content, username)
-    return {'success': True, 'data': {'id': message['id'], 'content': message['content'], 'author': message['username'], 'timestamp': message['timestamp']}}, 200
+    message = create_message(content, author)
+    return {'success': True, 'data': {'id': message['id'], 'content': message['content'], 'author': message['author'], 'timestamp': message['timestamp']}}, 200

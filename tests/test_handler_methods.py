@@ -23,13 +23,13 @@ def mock_storage():
     storage.update_message = AsyncMock(return_value={
         'id': 1,
         'content': 'Test message',
-        'username': 'test_user',
+        'author': 'test_user',
         'timestamp': '2025-01-17T14:04:38-05:00'
     })
     storage.get_message = AsyncMock(return_value={
         'id': 1,
         'content': 'Test message',
-        'username': 'test_user',
+        'author': 'test_user',
         'timestamp': '2025-01-17T14:04:38-05:00'
     })
     return storage
@@ -51,7 +51,7 @@ async def test_handle_message_post_success(mock_request):
     # Setup request data
     message_data = {
         'content': 'Hello, this is a test message',
-        'username': 'test_user'
+        'author': 'test_user'
     }
     mock_request.json = AsyncMock(return_value=message_data)
     mock_request.rfile.read = MagicMock(return_value=json.dumps(message_data).encode('utf-8'))
@@ -77,13 +77,13 @@ async def test_handle_message_post_missing_fields(mock_request):
     """Test message posting with missing fields."""
     # Test missing content
     mock_request.json = AsyncMock(return_value={
-        'username': 'test_user'
+        'author': 'test_user'
     })
     response = await handle_message_post(mock_request)
     assert response.status == 400
     assert 'Missing required fields' in response.text
 
-    # Test missing username
+    # Test missing author
     mock_request.json = AsyncMock(return_value={
         'content': 'Test message'
     })
@@ -100,13 +100,13 @@ async def test_serve_messages(mock_request, mock_storage):
         {
             'id': 1,
             'content': 'Message 1',
-            'username': 'user1',
+            'author': 'user1',
             'timestamp': '2025-01-17T14:04:38-05:00'
         },
         {
             'id': 2,
             'content': 'Message 2',
-            'username': 'user2',
+            'author': 'user2',
             'timestamp': '2025-01-17T14:04:38-05:00'
         }
     ]

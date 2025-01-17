@@ -32,8 +32,8 @@ class FileStorage:
                                 message_data['id'] = line[4:]
                             elif line.startswith('Content: '):
                                 message_data['content'] = line[9:]
-                            elif line.startswith('Username: '):
-                                message_data['username'] = line[10:]
+                            elif line.startswith('Author: '):
+                                message_data['author'] = line[8:]
                             elif line.startswith('Timestamp: '):
                                 message_data['timestamp'] = line[11:]
                         messages.append(message_data)
@@ -50,7 +50,7 @@ class FileStorage:
         """Save a message to storage.
         
         Args:
-            message: Dictionary containing message data (username, content, timestamp)
+            message: Dictionary containing message data (author, content, timestamp)
             
         Returns:
             Message ID if successful, None otherwise
@@ -62,7 +62,7 @@ class FileStorage:
             content = (
                 f"ID: {message_id}\n"
                 f"Content: {message['content']}\n"
-                f"Username: {message['username']}\n"
+                f"Author: {message['author']}\n"
                 f"Timestamp: {message['timestamp']}\n"
             )
             
@@ -90,8 +90,8 @@ class FileStorage:
                         message_data['id'] = line[4:]
                     elif line.startswith('Content: '):
                         message_data['content'] = line[9:]
-                    elif line.startswith('Username: '):
-                        message_data['username'] = line[10:]
+                    elif line.startswith('Author: '):
+                        message_data['author'] = line[8:]
                     elif line.startswith('Timestamp: '):
                         message_data['timestamp'] = line[11:]
                 return message_data
