@@ -78,3 +78,10 @@ async def test_handle_post_message(message_handler):
     assert stored_message['content'] == 'Test message'
     assert stored_message['author'] == 'test_user'
     assert 'timestamp' in stored_message
+
+
+@pytest.mark.asyncio
+async def test_handle_get_messages_no_extra_args(message_handler):
+    """Test that handle_get_messages doesn't accept extra arguments."""
+    with pytest.raises(TypeError, match="takes 1 positional argument but 2 were given"):
+        await message_handler.handle_get_messages("extra_arg")
