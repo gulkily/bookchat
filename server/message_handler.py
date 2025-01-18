@@ -26,16 +26,33 @@ class MessageHandler:
     
     def _to_api_response(self, message):
         """Convert internal message format to API response format."""
-        return {
+        response = {
             'id': message['id'],
             'content': message['content'],
             'author': message['author'],
             'timestamp': message['timestamp']
         }
+        logger.info(f"API Response format: {response}")
+        return response
     
-    async def create_message(self, content, author='anonymous', timestamp=None):
-        """Create a new message."""
-        timestamp = timestamp or '2025-01-17T14:51:18-05:00'  # Use provided time
+    def _get_current_time(self):
+        """Get the current time in ISO format with timezone offset."""
+        return datetime.now().strftime('%Y-%m-%dT%H:%M:%S-05:00')
+
+    async def create_message(self, content, author='anonymous', timestamp=None, current_time=None):
+        """Create a new message.
+        
+        Args:
+            content: Message content
+            author: Message author (default: 'anonymous')
+            timestamp: Optional specific timestamp to use
+            current_time: Optional override for current time (for testing)
+        """
+        if timestamp is None:
+            timestamp = current_time if current_time is not None else self._get_current_time()
+        
+        logger.info(f"Creating message with timestamp: {timestamp}")
+            
         message = {
             'id': await self.storage.save_message({
                 'content': content,
@@ -46,8 +63,10 @@ class MessageHandler:
             'author': author,
             'timestamp': timestamp
         }
-        return message
-    
+        
+        logger.info(f"Created message object: {message}")
+        return self._to_api_response(message)
+
     async def get_message(self, message_id):
         """Get a specific message by ID."""
         message = await self.storage.get_message(message_id)
@@ -81,38 +100,39 @@ class MessageHandler:
                     request_data = await request.json()
                     logger.info("Got JSON from request")
                 except (AttributeError, json.JSONDecodeError):
-                    # Try reading from rfile for test cases
                     try:
                         data = request.rfile.read()
                         logger.info(f"Read from rfile: {data}")
                         request_data = json.loads(data.decode('utf-8'))
                         logger.info(f"Parsed request data: {request_data}")
                     except Exception as e:
-                        logger.error(f"Error reading from rfile: {e}")
-                        raise
-                
-            content = request_data.get('content')
-            author = request_data.get('author', 'anonymous')
+                        logger.error(f"Error reading request data: {e}")
+                        return {
+                            'success': False,
+                            'error': 'Invalid request data'
+                        }
+
+            content = request_data.get('content', '').strip()
+            author = request_data.get('author', '') or request_data.get('username', '').strip()
             timestamp = request_data.get('timestamp')
-            
-            logger.info(f"Got content: {content}, author: {author}, timestamp: {timestamp}")
-            
-            if not content:
-                return {
-                    'success': False,
-                    'error': 'Missing content field'
-                }
-            
-            message = await self.create_message(content=content, author=author, timestamp=timestamp)
+
+            logger.info(f"Creating message with content: {content}, author: {author}, timestamp: {timestamp}")
+            message = await self.create_message(
+                content=content,
+                author=author,
+                timestamp=timestamp
+            )
             logger.info(f"Created message: {message}")
+            
             response = {
                 'success': True,
-                'data': self._to_api_response(message)
+                'data': message
             }
-            logger.info(f"Returning response: {response}")
+            logger.info(f"Sending response: {response}")
             return response
+            
         except Exception as e:
-            logger.error(f"Error in handle_post_message: {e}")
+            logger.error(f"Error handling post message: {e}")
             return {
                 'success': False,
                 'error': str(e)
@@ -175,7 +195,6 @@ def handle_post_message(request_data):
         return {'error': 'Invalid request data'}, 400
     
     content = request_data.get('content')
-    # Accept either username or author in request
     author = request_data.get('author', 'anonymous')
     
     if not content:
