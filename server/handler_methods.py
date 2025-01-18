@@ -78,3 +78,32 @@ async def handle_message_post(request):
             'success': False,
             'error': str(e)
         }, status=500)
+
+async def handle_username_change(request):
+    """Handle username change request."""
+    try:
+        data = await request.json()
+        old_username = data.get('old_username', '').strip()
+        new_username = data.get('new_username', '').strip()
+
+        if not new_username:
+            return web.Response(status=400, text='New username cannot be empty')
+
+        if not (3 <= len(new_username) <= 20):
+            return web.Response(status=400, text='Username must be between 3 and 20 characters')
+
+        if not new_username.replace('_', '').isalnum():
+            return web.Response(status=400, text='Username can only contain letters, numbers, and underscores')
+
+        # For now, we'll just accept any valid username change
+        # In a real app, you might want to check if username is taken, etc.
+        return web.json_response({
+            'success': True,
+            'username': new_username
+        })
+    except Exception as e:
+        logger.error(f'Error changing username: {e}')
+        return web.json_response({
+            'success': False,
+            'error': str(e)
+        }, status=500)
