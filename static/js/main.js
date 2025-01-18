@@ -22,22 +22,16 @@ async function verifyUsername() {
         const data = await response.json();
         currentUsername = data.username;
         
-        // TODO: Consider encrypting username in localStorage for privacy
         localStorage.setItem('username', currentUsername);
         
-        // TODO: Add loading state while verification is in progress
-        // TODO: Consider adding animation for username updates
-        const usernameDisplay = document.getElementById('current-username');
+        const usernameDisplay = document.getElementById('username-display');
         if (usernameDisplay) {
-            usernameDisplay.textContent = `Current username: ${currentUsername}`;
+            usernameDisplay.textContent = currentUsername;
         }
         
-        // TODO: Add event emission when username verification status changes
         return data.status === 'verified';
     } catch (error) {
         console.error('Error verifying username:', error);
-        // TODO: Add more specific error handling based on error type
-        // TODO: Consider showing error message to user
         currentUsername = localStorage.getItem('username') || 'anonymous';
         return false;
     }
@@ -69,7 +63,7 @@ async function loadMessages() {
         messagesContainer.innerHTML = '';
         
         // Sort messages by date (newest at bottom)
-        messages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        messages.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         messages.reverse();
         
         // Add messages to container
@@ -84,9 +78,9 @@ async function loadMessages() {
         if (data.currentUsername) {
             currentUsername = data.currentUsername;
             localStorage.setItem('username', currentUsername);
-            const usernameDisplay = document.getElementById('current-username');
+            const usernameDisplay = document.getElementById('username-display');
             if (usernameDisplay) {
-                usernameDisplay.textContent = `Current username: ${currentUsername}`;
+                usernameDisplay.textContent = currentUsername;
             }
         }
         
@@ -100,121 +94,72 @@ async function loadMessages() {
 function createMessageElement(message) {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message';
-    messageDiv.dataset.messageId = message.id;
+    messageDiv.dataset.messageId = message.id || '';
+
+    // Create message header
+    const header = document.createElement('div');
+    header.className = 'message-header';
     
-    // Create message header for author and timestamp
-    const messageHeader = document.createElement('div');
-    messageHeader.className = 'message-header';
-    
-    // Create left section for author and verification status
-    const leftSection = document.createElement('div');
-    leftSection.className = 'header-left';
-    
-    // Add author name
-    const authorSpan = document.createElement('span');
-    authorSpan.className = 'author';
-    authorSpan.textContent = message.author || 'anonymous';
-    leftSection.appendChild(authorSpan);
-    
-    // Add verification status if enabled
-    if (messageVerificationEnabled) {
-        const verifiedSpan = document.createElement('span');
-        verifiedSpan.className = `verification-status ${message.verified && message.verified.toLowerCase() === 'true' ? 'verified' : 'unverified'}`;
-        verifiedSpan.title = message.verified && message.verified.toLowerCase() === 'true' ? 'Message signature verified' : 'Message not verified';
-        verifiedSpan.innerHTML = message.verified && message.verified.toLowerCase() === 'true' ? '&#10003;' : '&#33;';
-        leftSection.appendChild(verifiedSpan);
-    }
-    
-    // Create right section for timestamp and commit hash
-    const rightSection = document.createElement('div');
-    rightSection.className = 'header-right';
-    
+    const headerLeft = document.createElement('div');
+    headerLeft.className = 'header-left';
+
+    // Add author
+    const author = document.createElement('span');
+    author.className = 'author';
+    author.textContent = message.author || 'anonymous';
+    headerLeft.appendChild(author);
+
     // Add timestamp
-    const timestampSpan = document.createElement('span');
-    timestampSpan.className = 'timestamp';
+    const timestamp = document.createElement('span');
+    timestamp.className = 'timestamp';
     if (message.pending) {
-        timestampSpan.className += ' pending';
-        timestampSpan.textContent = 'Sending...';
-        timestampSpan.title = 'Message is being sent';
+        timestamp.textContent = 'Sending...';
+        timestamp.className += ' pending';
     } else {
         try {
-            // Handle ISO 8601 dates with timezone offset
-            const date = message.createdAt;
-            if (date && date !== "No timestamp") {
-                // Try to parse the date, handling both ISO 8601 and other formats
-                try {
-                    // First try to parse as ISO 8601
-                    const messageDate = new Date(date);
-                    if (!isNaN(messageDate.getTime())) {
-                        const options = { hour: '2-digit', minute: '2-digit' };
-                        timestampSpan.textContent = messageDate.toLocaleTimeString([], options);
-                        timestampSpan.title = messageDate.toLocaleString();
-                    } else {
-                        // If not a valid date, just display the raw string
-                        timestampSpan.textContent = date;
-                        timestampSpan.title = date;
-                    }
-                } catch (error) {
-                    console.error('Error parsing date:', error, date);
-                    timestampSpan.textContent = date;
-                    timestampSpan.title = 'Error parsing date';
-                }
-            } else {
-                timestampSpan.textContent = date || 'Unknown time';
-                timestampSpan.title = date || 'Unknown time';
-            }
+            // Use either timestamp or createdAt field
+            const messageDate = new Date(message.timestamp || message.createdAt);
+            const options = { 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false 
+            };
+            timestamp.textContent = messageDate.toLocaleString([], options);
+            timestamp.title = messageDate.toLocaleString();
         } catch (error) {
-            console.error('Error formatting date:', error, message.createdAt);
-            timestampSpan.textContent = message.createdAt || 'Invalid date';
-            timestampSpan.title = 'Error parsing date';
+            console.error('Error formatting date:', error);
+            timestamp.textContent = 'Unknown time';
         }
     }
-    rightSection.appendChild(timestampSpan);
-    
-    // Add commit hash with GitHub link if available
-    if (message.commit_hash && message.repo_name) {
-        const commitSpan = document.createElement('span');
-        commitSpan.className = 'commit-hash';
-        const commitLink = document.createElement('a');
-        commitLink.href = `https://github.com/${message.repo_name}/commit/${message.commit_hash}`;
-        commitLink.target = '_blank';
-        commitLink.textContent = message.commit_hash;
-        commitLink.title = 'View commit on GitHub';
-        commitSpan.appendChild(commitLink);
-        rightSection.appendChild(commitSpan);
-    }
-    
-    // Add source file link if available and verification is enabled and not pending
-    if (message.file && messageVerificationEnabled && !message.pending) {
-        const sourceLink = document.createElement('a');
-        sourceLink.className = 'source-link';
-        sourceLink.href = `/messages/${message.file.split('/').pop()}`; // Get just the filename
-        sourceLink.textContent = '&#128273;';
-        sourceLink.title = 'View message source file';
-        sourceLink.target = '_blank'; // Open in new tab
-        rightSection.appendChild(sourceLink);
-    }
-    
-    messageHeader.appendChild(leftSection);
-    messageHeader.appendChild(rightSection);
-    messageDiv.appendChild(messageHeader);
-    
-    // Add message content
+    headerLeft.appendChild(timestamp);
+    header.appendChild(headerLeft);
+    messageDiv.appendChild(header);
+
+    // Create message content
     const content = document.createElement('div');
     content.className = 'content';
-    // Ensure we display the actual message content, not metadata
-    content.textContent = message.content || 'No message content';
-    messageDiv.appendChild(content);
     
+    // Strip signature block from content
+    let messageContent = message.content;
+    const signatureIndex = messageContent.indexOf('\n-- \n');
+    if (signatureIndex !== -1) {
+        messageContent = messageContent.substring(0, signatureIndex);
+    }
+    
+    content.textContent = messageContent;
+    messageDiv.appendChild(content);
+
     return messageDiv;
 }
 
 async function sendMessage(content, type = 'message') {
+    let tempMessage;  // Declare outside try block so catch block can access it
     try {
         // Ensure content is a string and trim it
         content = String(content || '').trim();
         console.log('sendMessage called with content:', content, 'Length:', content.length);
-        console.log('Content type:', typeof content);
         
         if (!content) {
             console.error('Empty message content in sendMessage');
@@ -222,14 +167,15 @@ async function sendMessage(content, type = 'message') {
         }
 
         // Create a temporary message object
-        const tempMessage = {
+        tempMessage = {
             content: content,
             author: currentUsername,
-            createdAt: new Date().toISOString(),
+            timestamp: new Date().toISOString(),
             id: 'pending-' + Date.now(),
             verified: false,
             pending: true
         };
+        console.log('Created temporary message:', tempMessage);
 
         // Immediately add message to UI
         const messagesContainer = document.getElementById('messages-container');
@@ -239,24 +185,24 @@ async function sendMessage(content, type = 'message') {
         const messagesDiv = document.getElementById('messages');
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
+        // Add a small delay to ensure the "Sending..." status is visible
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         // Create request body and log it
         const requestBody = {
             content: content,
             username: currentUsername
         };
-        console.log('Request body before stringify:', requestBody);
-        const stringifiedBody = JSON.stringify(requestBody);
-        console.log('Stringified request body:', stringifiedBody);
+        console.log('Sending request:', requestBody);
         
         const response = await fetch('/messages', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: stringifiedBody
+            body: JSON.stringify(requestBody)
         });
         
-        // Log response status
         console.log('Response status:', response.status);
         
         if (!response.ok) {
@@ -266,53 +212,70 @@ async function sendMessage(content, type = 'message') {
         }
         
         const result = await response.json();
+        console.log('Server response:', result);
         
         // Update the pending message with the real data
         const pendingMessage = document.querySelector(`[data-message-id="${tempMessage.id}"]`);
+        console.log('Found pending message:', pendingMessage ? 'yes' : 'no');
+        
         if (pendingMessage && result.data) {
-            // Update message ID and data
+            console.log('Updating message with server data:', result.data);
+            
+            // Update message ID
             pendingMessage.dataset.messageId = result.data.id || tempMessage.id;
             
             // Update the timestamp
             const timestamp = pendingMessage.querySelector('.timestamp');
-            if (timestamp && result.data.createdAt) {
+            console.log('Found timestamp element:', timestamp ? 'yes' : 'no');
+            console.log('Server timestamp:', result.data.timestamp);
+            
+            if (timestamp) {
                 try {
-                    const messageDate = new Date(result.data.createdAt);
-                    const options = { hour: '2-digit', minute: '2-digit' };
-                    timestamp.textContent = messageDate.toLocaleTimeString([], options);
-                    timestamp.title = messageDate.toLocaleString();
+                    const messageDate = new Date(result.data.timestamp);
+                    console.log('Parsed message date:', messageDate);
+                    
+                    const options = { 
+                        month: 'short', 
+                        day: 'numeric',
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        hour12: false 
+                    };
+                    const formattedDate = messageDate.toLocaleString([], options);
+                    console.log('Formatted date:', formattedDate);
+                    
+                    // Add a small delay before updating the timestamp
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    // Remove the pending class first
                     timestamp.classList.remove('pending');
+                    // Then update the text content
+                    timestamp.textContent = formattedDate;
+                    timestamp.title = messageDate.toLocaleString();
+                    console.log('Updated timestamp element:', {
+                        text: timestamp.textContent,
+                        classList: timestamp.className
+                    });
                 } catch (error) {
                     console.error('Error updating timestamp:', error);
                     timestamp.textContent = 'Unknown time';
                     timestamp.title = 'Error parsing date';
                 }
+            } else {
+                console.warn('Missing timestamp element');
             }
-            
-            // Add verification status if needed
-            if (messageVerificationEnabled) {
-                const leftSection = pendingMessage.querySelector('.header-left');
-                const verificationStatus = document.createElement('span');
-                verificationStatus.className = 'verification-status';
-                
-                if (result.data.verified && result.data.verified.toLowerCase() === 'true') {
-                    verificationStatus.className += ' verified';
-                    verificationStatus.title = 'Message verified';
-                    verificationStatus.innerHTML = '&#10003;';
-                } else {
-                    verificationStatus.className += ' unverified';
-                    verificationStatus.title = 'Message not verified';
-                    verificationStatus.innerHTML = '&#33;';
-                }
-                leftSection.insertBefore(verificationStatus, leftSection.firstChild);
-            }
+        } else {
+            console.warn('Could not update message:', {
+                hasPendingMessage: !!pendingMessage,
+                hasResultData: !!result.data
+            });
         }
         
         return result;
     } catch (error) {
         console.error('Error sending message:', error);
         // Update pending message to show error
-        const pendingMessage = document.querySelector(`[data-message-id="${tempMessage.id}"]`);
+        const pendingMessage = document.querySelector(`[data-message-id="${tempMessage?.id}"]`);
         if (pendingMessage) {
             const timestamp = pendingMessage.querySelector('.timestamp');
             if (timestamp) {
@@ -358,7 +321,7 @@ async function changeUsername(newUsername) {
         // Update display
         const usernameDisplay = document.getElementById('username-display');
         if (usernameDisplay) {
-            usernameDisplay.textContent = newUsername;
+            usernameDisplay.textContent = currentUsername;
         }
         
         return true;
@@ -386,11 +349,6 @@ function setupUsernameUI() {
                 const success = await changeUsername(newUsername);
                 if (!success) {
                     alert('Failed to change username. Please try a different username.');
-                } else {
-                    // Update display after successful change
-                    if (usernameDisplay) {
-                        usernameDisplay.textContent = newUsername;
-                    }
                 }
             }
         };

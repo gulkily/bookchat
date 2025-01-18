@@ -8,6 +8,7 @@ import socket
 import webbrowser
 import threading
 import platform
+import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from datetime import datetime
@@ -116,6 +117,19 @@ class ChatRequestHandler(BaseHTTPRequestHandler):
                         'error': str(handler_error),
                         'messages': []
                     })
+            elif parsed_url.path == '/test_message':
+                # Test route to check message format
+                test_message = {
+                    'success': True,
+                    'data': {
+                        'id': 'test-123',
+                        'content': 'Test message',
+                        'author': 'test-user',
+                        'timestamp': datetime.now().isoformat()
+                    }
+                }
+                logging.info(f"Test message response: {test_message}")
+                self.send_json_response(test_message)
             elif parsed_url.path == '/' or parsed_url.path == '/index.html':
                 self.serve_file('templates/chat.html', 'text/html')
             elif parsed_url.path == '/favicon.ico':
@@ -148,13 +162,59 @@ class ChatRequestHandler(BaseHTTPRequestHandler):
             # Parse URL
             parsed_url = urlparse(self.path)
             
-            # Route request based on path
-            if parsed_url.path == '/messages':
-                response = await self.message_handler.handle_post_message(self)
-                self.send_json_response(response)
-            else:
-                self.send_error(404, "Path not found")
+            # Read the request body for all POST requests
+            content_length = int(self.headers.get('Content-Length', 0))
+            request_body = self.rfile.read(content_length)
+            
+            try:
+                # Parse JSON data
+                request_data = json.loads(request_body.decode('utf-8'))
+                logging.info(f"Received POST data: {request_data}")
                 
+                # Route request based on path
+                if parsed_url.path == '/messages':
+                    # Pass the parsed JSON data to the message handler
+                    response = await self.message_handler.handle_post_message(request_data)
+                    logging.info(f"Handler response: {response}")
+                    self.send_json_response(response)
+                elif parsed_url.path == '/change_username':
+                    # Handle username change
+                    new_username = request_data.get('new_username', '').strip()
+                    
+                    if not new_username:
+                        self.send_json_response({
+                            'success': False,
+                            'error': 'New username cannot be empty'
+                        }, status=400)
+                        return
+                        
+                    if not (3 <= len(new_username) <= 20):
+                        self.send_json_response({
+                            'success': False,
+                            'error': 'Username must be between 3 and 20 characters'
+                        }, status=400)
+                        return
+                        
+                    if not new_username.replace('_', '').isalnum():
+                        self.send_json_response({
+                            'success': False,
+                            'error': 'Username can only contain letters, numbers, and underscores'
+                        }, status=400)
+                        return
+                        
+                    self.send_json_response({
+                        'success': True,
+                        'username': new_username
+                    })
+                else:
+                    self.send_error(404, "Path not found")
+                    
+            except json.JSONDecodeError as e:
+                logging.error(f"Invalid JSON in request: {e}")
+                self.send_json_response({
+                    'success': False,
+                    'error': 'Invalid JSON data'
+                }, status=400)
         except Exception as e:
             logging.error(f"Error handling POST request: {e}")
             self.send_error(500, str(e))
@@ -236,8 +296,20 @@ class ChatServer(HTTPServer):
 def run_server():
     """Run the chat server."""
     try:
-        server = ChatServer(('localhost', 8001), ChatRequestHandler)
-        threading.Thread(target=open_browser, args=('http://localhost:8001',), daemon=True).start()
+        # Find an available port
+        port = find_available_port(start_port=8001)
+        
+        # Export the port as an environment variable
+        os.environ['SERVER_PORT'] = str(port)
+        # Print to stderr for immediate flushing
+        print(f"export SERVER_PORT={port}", file=sys.stderr, flush=True)
+        
+        # Start server
+        server = ChatServer(('localhost', port), ChatRequestHandler)
+        url = f'http://localhost:{port}'
+        threading.Thread(target=open_browser, args=(url,), daemon=True).start()
+        
+        logging.info(f'Server running at {url}')
         server.serve_forever()
     except KeyboardInterrupt:
         logging.info('Server stopped by user')
