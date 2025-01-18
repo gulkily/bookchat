@@ -20,28 +20,30 @@
         </header>
 
         <main class="chat-container">
-            <!-- Message input form -->
-            <div class="message-input-container">
-                <!-- No-JS fallback form -->
-                <form id="message-form" method="POST" action="/messages" class="message-form" style="display: none;">
-                    <textarea name="content" required maxlength="2000" placeholder="Type your message..."></textarea>
-                    <button type="submit">Send</button>
-                </form>
-
-                <!-- JS-enabled form -->
-                <form id="js-message-form" class="message-form">
-                    <div class="input-wrapper">
-                        <textarea id="message-input" maxlength="2000" placeholder="Type your message... (Shift+Enter for new line)"></textarea>
-                        <span id="js-char-counter" class="char-counter">0/2000</span>
+            <div id="chat-layout" class="chat-layout chronological">
+                <!-- Messages container with scrolling -->
+                <div id="messages" class="messages-outer">
+                    <div id="messages-container" class="messages-inner">
+                        <!-- Messages will be inserted here -->
                     </div>
-                    <button id="send-button" type="submit">Send</button>
-                </form>
-            </div>
+                </div>
 
-            <!-- Messages container with scrolling -->
-            <div id="messages" class="messages-outer">
-                <div id="messages-container" class="messages-inner">
-                    <!-- Messages will be inserted here -->
+                <!-- Message input form -->
+                <div class="message-input-container">
+                    <!-- No-JS fallback form -->
+                    <form id="message-form" method="POST" action="/messages" class="message-form" style="display: none;">
+                        <textarea name="content" required maxlength="2000" placeholder="Type your message..."></textarea>
+                        <button type="submit">Send</button>
+                    </form>
+
+                    <!-- JS-enabled form -->
+                    <form id="js-message-form" class="message-form">
+                        <div class="input-wrapper">
+                            <textarea id="message-input" maxlength="2000" placeholder="Type your message... (Shift+Enter for new line)"></textarea>
+                            <span id="js-char-counter" class="char-counter">0/2000</span>
+                        </div>
+                        <button id="send-button" type="submit">Send</button>
+                    </form>
                 </div>
             </div>
         </main>

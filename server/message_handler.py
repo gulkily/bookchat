@@ -91,31 +91,10 @@ class MessageHandler:
     async def handle_post_message(self, request):
         """Handle POST request for creating a message."""
         try:
-            logger.info("Handling post message request")
-            if isinstance(request, dict):
-                request_data = request
-                logger.info("Using dict request data")
-            else:
-                try:
-                    request_data = await request.json()
-                    logger.info("Got JSON from request")
-                except (AttributeError, json.JSONDecodeError):
-                    try:
-                        data = request.rfile.read()
-                        logger.info(f"Read from rfile: {data}")
-                        request_data = json.loads(data.decode('utf-8'))
-                        logger.info(f"Parsed request data: {request_data}")
-                    except Exception as e:
-                        logger.error(f"Error reading request data: {e}")
-                        return {
-                            'success': False,
-                            'error': 'Invalid request data'
-                        }
-
-            content = request_data.get('content', '').strip()
-            author = request_data.get('author', '') or request_data.get('username', '').strip()
-            timestamp = request_data.get('timestamp')
-
+            content = request.get('content', '').strip()
+            author = request.get('author', '') or request.get('username', '').strip()
+            timestamp = request.get('timestamp')
+            
             logger.info(f"Creating message with content: {content}, author: {author}, timestamp: {timestamp}")
             message = await self.create_message(
                 content=content,
@@ -124,12 +103,10 @@ class MessageHandler:
             )
             logger.info(f"Created message: {message}")
             
-            response = {
+            return {
                 'success': True,
                 'data': message
             }
-            logger.info(f"Sending response: {response}")
-            return response
             
         except Exception as e:
             logger.error(f"Error handling post message: {e}")
@@ -137,68 +114,3 @@ class MessageHandler:
                 'success': False,
                 'error': str(e)
             }
-
-
-def get_messages():
-    """Get all messages from storage."""
-    messages = []
-    messages_dir = Path(STORAGE_DIR) / 'messages'
-    if not messages_dir.exists():
-        return messages
-
-    for file_path in messages_dir.glob('*.txt'):
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                message_data = {}
-                for line in content.split('\n'):
-                    if line.startswith('ID: '):
-                        message_data['id'] = line[4:]
-                    elif line.startswith('Content: '):
-                        message_data['content'] = line[9:]
-                    elif line.startswith('Username: '):
-                        message_data['author'] = line[10:]
-                    elif line.startswith('Timestamp: '):
-                        message_data['timestamp'] = line[11:]
-                messages.append(message_data)
-        except Exception as e:
-            print(f"Error reading message file {file_path}: {e}")
-            continue
-
-    return sorted(messages, key=lambda x: x.get('timestamp', ''))
-
-def create_message(content, author='anonymous', timestamp=None):
-    """Create a new message."""
-    message_id = str(uuid.uuid4())
-    timestamp = timestamp or datetime.now().isoformat()
-    
-    messages_dir = Path(STORAGE_DIR) / 'messages'
-    messages_dir.mkdir(parents=True, exist_ok=True)
-    
-    message_path = messages_dir / f"{message_id}.txt"
-    
-    message_content = f"ID: {message_id}\nContent: {content}\nAuthor: {author}\nTimestamp: {timestamp}"
-    
-    with open(message_path, 'w', encoding='utf-8') as f:
-        f.write(message_content)
-    
-    return {
-        'id': message_id,
-        'content': content,
-        'author': author,
-        'timestamp': timestamp
-    }
-
-def handle_post_message(request_data):
-    """Handle a POST request to create a new message."""
-    if not isinstance(request_data, dict):
-        return {'error': 'Invalid request data'}, 400
-    
-    content = request_data.get('content')
-    author = request_data.get('author', 'anonymous')
-    
-    if not content:
-        return {'error': 'Message content is required'}, 400
-    
-    message = create_message(content, author)
-    return {'success': True, 'data': {'id': message['id'], 'content': message['content'], 'author': message['author'], 'timestamp': message['timestamp']}}, 200

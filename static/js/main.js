@@ -5,6 +5,7 @@ let messageVerificationEnabled = false;
 
 // Initialize everything
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOM loaded, initializing...');
     await verifyUsername();
     setupMessageInput();
     setupUsernameUI();
@@ -43,51 +44,34 @@ async function loadMessages() {
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
         const data = await response.json();
-        let messages = data.messages;
-        messageVerificationEnabled = data.messageVerificationEnabled;
         
-        // Filter out unverified messages when verification is enabled
-        if (messageVerificationEnabled) {
-            messages = messages.filter(message => {
-                if (typeof message.verified === 'string') {
-                    return message.verified.toLowerCase() === 'true';
-                }
-                return !!message.verified;
-            });
+        if (!data.success) {
+            console.error('Error loading messages:', data.error);
+            return;
         }
         
-        const messagesDiv = document.getElementById('messages');
+        // Get messages
+        let messages = data.messages || [];
+        
+        // Clear existing messages
         const messagesContainer = document.getElementById('messages-container');
         messagesContainer.innerHTML = '';
         
-        // Sort messages by date (newest at bottom)
-        messages.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        messages.reverse();
-        
-        // Add messages to container
-        for (const message of messages) {
-            messagesContainer.appendChild(createMessageElement(message));
-        }
+        // Add messages
+        messages.forEach(message => {
+            const messageElement = createMessageElement(message);
+            messagesContainer.appendChild(messageElement);
+        });
         
         // Scroll to bottom
+        const messagesDiv = document.getElementById('messages');
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
         
-        // Update current username
-        if (data.currentUsername) {
-            currentUsername = data.currentUsername;
-            localStorage.setItem('username', currentUsername);
-            const usernameDisplay = document.getElementById('username-display');
-            if (usernameDisplay) {
-                usernameDisplay.textContent = currentUsername;
-            }
-        }
-        
-        // Update verification status
-        updateGlobalVerificationStatus();
+        return messages;
     } catch (error) {
         console.error('Error loading messages:', error);
+        return [];
     }
 }
 
@@ -155,126 +139,69 @@ function createMessageElement(message) {
 }
 
 async function sendMessage(content, type = 'message') {
-    let tempMessage;  // Declare outside try block so catch block can access it
+    let tempMessage;
     try {
-        // Ensure content is a string and trim it
-        content = String(content || '').trim();
-        console.log('sendMessage called with content:', content, 'Length:', content.length);
-        
-        if (!content) {
-            console.error('Empty message content in sendMessage');
-            return;
-        }
-
-        // Create a temporary message object
+        const timestamp = new Date().toISOString();
         tempMessage = {
+            id: `temp-${Date.now()}`,
             content: content,
             author: currentUsername,
-            timestamp: new Date().toISOString(),
-            id: 'pending-' + Date.now(),
-            verified: false,
-            pending: true
+            timestamp: timestamp
         };
-        console.log('Created temporary message:', tempMessage);
-
-        // Immediately add message to UI
+        
+        // Create message element
         const messagesContainer = document.getElementById('messages-container');
-        messagesContainer.appendChild(createMessageElement(tempMessage));
+        const messageElement = createMessageElement(tempMessage);
+        messagesContainer.appendChild(messageElement);
         
         // Scroll to bottom
         const messagesDiv = document.getElementById('messages');
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-        // Create request body and log it
-        const requestBody = {
-            content: content,
-            username: currentUsername
-        };
-        console.log('Sending request:', requestBody);
         
+        // Send message to server
         const response = await fetch('/messages', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify({
+                content: content,
+                author: currentUsername,
+                type: type
+            })
         });
         
-        console.log('Response status:', response.status);
-        
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Server error response:', errorText);
-            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const result = await response.json();
-        console.log('Server response:', result);
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to send message');
+        }
         
-        // Update the pending message with the real data
+        // Update temp message with real data
+        const sentMessage = data.data;
         const pendingMessage = document.querySelector(`[data-message-id="${tempMessage.id}"]`);
-        console.log('Found pending message:', pendingMessage ? 'yes' : 'no');
-        
-        if (pendingMessage && result.data) {
-            console.log('Updating message with server data:', result.data);
-            
-            // Update message ID
-            pendingMessage.dataset.messageId = result.data.id || tempMessage.id;
-            
-            // Update the timestamp
+        if (pendingMessage) {
+            pendingMessage.setAttribute('data-message-id', sentMessage.id);
             const timestamp = pendingMessage.querySelector('.timestamp');
-            console.log('Found timestamp element:', timestamp ? 'yes' : 'no');
-            console.log('Server timestamp:', result.data.timestamp);
-            
             if (timestamp) {
-                try {
-                    const messageDate = new Date(result.data.timestamp);
-                    console.log('Parsed message date:', messageDate);
-                    
-                    const options = { 
-                        month: 'short', 
-                        day: 'numeric',
-                        hour: '2-digit', 
-                        minute: '2-digit',
-                        hour12: false 
-                    };
-                    const formattedDate = messageDate.toLocaleString([], options);
-                    console.log('Formatted date:', formattedDate);
-                    
-                    // Update timestamp in one go
-                    timestamp.className = 'timestamp';
-                    timestamp.textContent = formattedDate;
-                    timestamp.title = messageDate.toLocaleString();
-                    console.log('Updated timestamp element:', {
-                        text: timestamp.textContent,
-                        classList: timestamp.className
-                    });
-                } catch (error) {
-                    console.error('Error updating timestamp:', error);
-                    timestamp.textContent = 'Unknown time';
-                    timestamp.title = 'Error parsing date';
-                }
-            } else {
-                console.warn('Missing timestamp element');
+                timestamp.textContent = formatTimestamp(sentMessage.timestamp);
+                timestamp.title = new Date(sentMessage.timestamp).toLocaleString();
             }
-        } else {
-            console.warn('Could not update message:', {
-                hasPendingMessage: !!pendingMessage,
-                hasResultData: !!result.data
-            });
         }
         
-        return result;
+        return sentMessage;
     } catch (error) {
         console.error('Error sending message:', error);
-        // Update pending message to show error
         const pendingMessage = document.querySelector(`[data-message-id="${tempMessage?.id}"]`);
         if (pendingMessage) {
             const timestamp = pendingMessage.querySelector('.timestamp');
             if (timestamp) {
                 timestamp.className = 'timestamp error';
                 timestamp.textContent = 'Failed to send';
-                timestamp.title = 'Message failed to send';
+                timestamp.title = error.message;
             }
         }
         throw error;
