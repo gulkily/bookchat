@@ -118,6 +118,32 @@ body {
     font-size: 0.9em;
 }
 
+#header {
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#current-username {
+    font-weight: bold;
+    color: #333;
+}
+
+#change-username-btn {
+    padding: 5px 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#change-username-btn:hover {
+    background-color: #45a049;
+}
+
 /* Messages area */
 #messages {
     flex: 1;
