@@ -1,0 +1,25 @@
+{
+  "name": "bookchat",
+  "version": "1.0.0",
+  "description": "A chat application for book discussions",
+  "main": "server.js",
+  "scripts": {
+    "test": "jest",
+    "test:unit": "jest --testPathIgnorePatterns=e2e.test.js",
+    "test:e2e": "playwright test",
+    "start": "node server.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "@playwright/test": "^1.40.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "moduleDirectories": ["node_modules", "src"],
+    "testEnvironmentOptions": {
+      "url": "http://localhost:3000"
+    }
+  }
+}
