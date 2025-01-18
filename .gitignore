@@ -56,13 +56,6 @@ test-results/
 playwright-report/
 node_modules/
 
-# Data and runtime files
-messages/*.txt
-data/messages/
-data/archives/
-data/identity/
-identity/public_keys/
-
 # Shell scripts
 *.sh
 !run_tests.sh
