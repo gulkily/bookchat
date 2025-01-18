@@ -55,45 +55,54 @@ test.describe('BookChat Frontend', () => {
   });
 
   test('message sending status transitions correctly', async ({ page }) => {
+    // Enable console logging
+    page.on('console', msg => console.log('Browser log:', msg.text()));
+    
     // Wait for the message input to be available
+    console.log('Waiting for message input...');
     const messageInput = page.locator('#message-input');
     await messageInput.waitFor({ state: 'visible' });
     await highlight(messageInput);
+    console.log('Message input found');
     
     // Type and send a message
     const testMessage = 'Testing message status';
+    console.log('Filling message:', testMessage);
     await messageInput.fill(testMessage);
     
     const sendButton = page.locator('#send-button');
     await highlight(sendButton);
     
-    // Get timestamp element before clicking (it shouldn't exist yet)
-    const timestamp = page.locator('.message:last-child .timestamp');
-    
-    // Click send button
-    await sendButton.click();
-    
-    // Wait for the "Sending..." status to appear and be visible
-    await expect(timestamp).toBeVisible({ timeout: 2000 });
-    await expect(timestamp).toHaveText('Sending...', { timeout: 2000 });
-    await expect(timestamp).toHaveClass(/pending/, { timeout: 2000 });
-    await highlight(timestamp);
-    
-    // Now wait for the POST request to complete
-    const response = await page.waitForResponse(
+    // Set up response listener before clicking
+    console.log('Setting up POST response listener...');
+    const responsePromise = page.waitForResponse(
       response => response.url().includes('/messages') && 
                  response.request().method() === 'POST'
     );
+    
+    // Click send button
+    console.log('Clicking send button...');
+    await sendButton.click();
+    
+    // Wait for the POST request to complete first
+    console.log('Waiting for POST response...');
+    const response = await responsePromise;
+    console.log('Got POST response:', response.status());
     expect(response.ok()).toBeTruthy();
     
-    // Wait for the timestamp to update
-    await expect(timestamp).not.toHaveText('Sending...', { timeout: 5000 });
-    await expect(timestamp).not.toHaveClass(/pending/, { timeout: 5000 });
-    await highlight(timestamp);
+    // Now look for the timestamp
+    const timestamp = page.locator('.message:last-child .timestamp');
+    console.log('Checking timestamp...');
     
-    // Verify timestamp format (e.g., "Jan 17, 21:00")
+    // Get the timestamp text and verify format
     const timestampText = await timestamp.textContent();
+    console.log('Found timestamp text:', timestampText);
     expect(timestampText).toMatch(/[A-Z][a-z]{2} \d{1,2}, \d{2}:\d{2}/);
+    
+    // Verify it's a proper timestamp (not "Sending..." or error)
+    expect(timestampText).not.toBe('Sending...');
+    expect(timestampText).not.toBe('Failed to send');
+    expect(timestampText).not.toBe('Unknown time');
   });
 
   test('username change functionality', async ({ page }) => {

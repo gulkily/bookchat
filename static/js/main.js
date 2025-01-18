@@ -185,9 +185,6 @@ async function sendMessage(content, type = 'message') {
         const messagesDiv = document.getElementById('messages');
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-        // Add a small delay to ensure the "Sending..." status is visible
-        await new Promise(resolve => setTimeout(resolve, 100));
-
         // Create request body and log it
         const requestBody = {
             content: content,
@@ -244,12 +241,8 @@ async function sendMessage(content, type = 'message') {
                     const formattedDate = messageDate.toLocaleString([], options);
                     console.log('Formatted date:', formattedDate);
                     
-                    // Add a small delay before updating the timestamp
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    
-                    // Remove the pending class first
-                    timestamp.classList.remove('pending');
-                    // Then update the text content
+                    // Update timestamp in one go
+                    timestamp.className = 'timestamp';
                     timestamp.textContent = formattedDate;
                     timestamp.title = messageDate.toLocaleString();
                     console.log('Updated timestamp element:', {
