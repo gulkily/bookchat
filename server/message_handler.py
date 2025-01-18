@@ -91,9 +91,15 @@ class MessageHandler:
     async def handle_post_message(self, request):
         """Handle POST request for creating a message."""
         try:
-            content = request.get('content', '').strip()
-            author = request.get('author', '') or request.get('username', '').strip()
-            timestamp = request.get('timestamp')
+            # Handle both request objects and direct data dictionaries
+            if isinstance(request, dict):
+                data = request
+            else:
+                data = await request.json()
+                
+            content = data.get('content', '').strip()
+            author = data.get('author', '') or data.get('username', '').strip()
+            timestamp = data.get('timestamp')
             
             logger.info(f"Creating message with content: {content}, author: {author}, timestamp: {timestamp}")
             message = await self.create_message(

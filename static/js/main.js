@@ -110,7 +110,7 @@ function createMessageElement(message) {
                 minute: '2-digit',
                 hour12: false 
             };
-            timestamp.textContent = messageDate.toLocaleString([], options);
+            timestamp.textContent = formatTimestamp(message.timestamp || message.createdAt);
             timestamp.title = messageDate.toLocaleString();
         } catch (error) {
             console.error('Error formatting date:', error);
@@ -176,23 +176,35 @@ async function sendMessage(content, type = 'message') {
         }
         
         const data = await response.json();
-        if (!data.success) {
+        console.log('Server response:', data);
+        
+        // Handle error response format
+        if (data.success === false) {
+            console.log('Detected error response');
             throw new Error(data.error || 'Failed to send message');
         }
         
+        // Handle success response - either direct message data or wrapped in data field
+        const sentMessage = data.data || data;
+        console.log('Extracted message:', sentMessage);
+        
         // Update temp message with real data
-        const sentMessage = data.data;
         const pendingMessage = document.querySelector(`[data-message-id="${tempMessage.id}"]`);
         if (pendingMessage) {
             pendingMessage.setAttribute('data-message-id', sentMessage.id);
             const timestamp = pendingMessage.querySelector('.timestamp');
             if (timestamp) {
-                timestamp.textContent = formatTimestamp(sentMessage.timestamp);
+                const formattedTime = formatTimestamp(sentMessage.timestamp);
+                timestamp.textContent = formattedTime;
                 timestamp.title = new Date(sentMessage.timestamp).toLocaleString();
+                timestamp.classList.remove('pending');
+                timestamp.classList.remove('error');
             }
         }
         
-        return sentMessage;
+        const result = { success: true, message: sentMessage };
+        console.log('Returning result:', result);
+        return result;
     } catch (error) {
         console.error('Error sending message:', error);
         const pendingMessage = document.querySelector(`[data-message-id="${tempMessage?.id}"]`);
@@ -204,7 +216,7 @@ async function sendMessage(content, type = 'message') {
                 timestamp.title = error.message;
             }
         }
-        throw error;
+        return { success: false, error: error.message };
     }
 }
 
@@ -304,11 +316,13 @@ function setupMessageInput() {
             const originalContent = content;
             messageInput.value = '';
             
-            try {
-                await sendMessage(originalContent);
+            const result = await sendMessage(originalContent);
+            console.log('Send message result:', result);
+            if (result.success) {
+                console.log('Message sent successfully');
                 return true;
-            } catch (error) {
-                console.error('Failed to send message:', error);
+            } else {
+                console.error('Failed to send message:', result.error);
                 messageInput.value = originalContent;
                 messageInput.classList.add('error');
                 setTimeout(() => messageInput.classList.remove('error'), 2000);
@@ -336,6 +350,37 @@ function setupMessageInput() {
                 await validateAndSendMessage(messageInput.value);
             }
         });
+    }
+}
+
+// Format timestamp into a human-readable format
+function formatTimestamp(isoTimestamp) {
+    try {
+        const date = new Date(isoTimestamp);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        if (diffMins < 1) {
+            return 'Just now';
+        } else if (diffMins < 60) {
+            return `${diffMins}m ago`;
+        } else if (diffHours < 24) {
+            return `${diffHours}h ago`;
+        } else if (diffDays < 7) {
+            return `${diffDays}d ago`;
+        } else {
+            return date.toLocaleDateString(undefined, { 
+                month: 'short', 
+                day: 'numeric',
+                year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+            });
+        }
+    } catch (e) {
+        console.error('Error formatting timestamp:', e);
+        return isoTimestamp; // Fallback to raw timestamp
     }
 }
 
