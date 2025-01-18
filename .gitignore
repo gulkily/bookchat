@@ -49,5 +49,14 @@ keys/*.pub
 .coverage
 htmlcov/
 
+# Test output
+test-results/
+playwright-report/
+server_output.txt
+node_modules/
+
+# Message files
+messages/*.txt
+
 # Git
 cloned_repos/
