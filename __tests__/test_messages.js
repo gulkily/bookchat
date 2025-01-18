@@ -1,3 +1,5 @@
+const { sendMessage, createMessageElement, loadMessages } = require('./setup');
+
 // Using Jest for testing
 
 describe('Message Persistence', () => {
@@ -39,6 +41,36 @@ describe('Message Persistence', () => {
 
         const sentData = JSON.parse(fetch.mock.calls[0][1].body);
         expect(sentData.content).toBe(testMessage.content);
+    });
+
+    test('should remove pending status after successful message send', async () => {
+        // Mock fetch for sending message
+        global.fetch = jest.fn(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({
+                    data: {
+                        id: '123',
+                        content: 'Test message',
+                        author: 'testuser',
+                        createdAt: '2025-01-17T20:38:02-05:00'
+                    }
+                })
+            })
+        );
+
+        // Send a test message
+        await sendMessage('Test message');
+
+        // Get the message element
+        const messageElement = document.querySelector('.message');
+        const timestamp = messageElement.querySelector('.timestamp');
+
+        // Verify the pending class is removed
+        expect(timestamp.classList.contains('pending')).toBe(false);
+        
+        // Verify the timestamp shows the correct time
+        expect(timestamp.textContent).toBe('Jan 17, 20:38');
     });
 });
 
