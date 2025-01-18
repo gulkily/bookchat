@@ -26,6 +26,8 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.pytest_cache/
+pytest.ini
 
 # SQLite
 *.db
@@ -39,24 +41,32 @@ wheels/
 *.swo
 .aider*
 
-# Logs
+# Logs and output
 logs/
 *.log
 keys/*.pem
 keys/*.pub
+server_output.txt
+debug.log
 
-# Test coverage
+# Test coverage and output
 .coverage
 htmlcov/
-
-# Test output
 test-results/
 playwright-report/
-server_output.txt
 node_modules/
 
-# Message files
+# Data and runtime files
 messages/*.txt
+data/messages/
+data/archives/
+data/identity/
+identity/public_keys/
+
+# Shell scripts
+*.sh
+!run_tests.sh
 
 # Git
 cloned_repos/
+forks_list.txt
