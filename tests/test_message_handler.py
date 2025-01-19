@@ -85,3 +85,127 @@ async def test_handle_get_messages_no_extra_args(message_handler):
     """Test that handle_get_messages doesn't accept extra arguments."""
     with pytest.raises(TypeError, match="takes 1 positional argument but 2 were given"):
         await message_handler.handle_get_messages("extra_arg")
+
+
+@pytest.mark.asyncio
+async def test_handle_post_message_with_dict(message_handler):
+    """Test handling message post with direct dictionary input."""
+    message_data = {
+        'content': 'Test message',
+        'author': 'test_user',
+        'timestamp': '2025-01-17T14:51:18-05:00'
+    }
+
+    response = await message_handler.handle_post_message(message_data)
+    assert response['success'] is True
+    assert 'data' in response
+    stored_message = response['data']
+    assert stored_message['content'] == 'Test message'
+    assert stored_message['author'] == 'test_user'
+    assert 'timestamp' in stored_message
+
+
+@pytest.mark.asyncio
+async def test_handle_post_message_missing_content(message_handler):
+    """Test handling message post with missing content."""
+    request = AsyncMock()
+    request.json = AsyncMock(return_value={
+        'author': 'test_user',
+        'timestamp': '2025-01-17T14:51:18-05:00'
+    })
+
+    response = await message_handler.handle_post_message(request)
+    assert response['success'] is False
+    assert 'error' in response
+
+
+@pytest.mark.asyncio
+async def test_handle_post_message_missing_author(message_handler):
+    """Test handling message post with missing author."""
+    request = AsyncMock()
+    request.json = AsyncMock(return_value={
+        'content': 'Test message',
+        'timestamp': '2025-01-17T14:51:18-05:00'
+    })
+
+    response = await message_handler.handle_post_message(request)
+    assert response['success'] is True
+    assert 'data' in response
+    stored_message = response['data']
+    assert stored_message['content'] == 'Test message'
+    assert stored_message['author'] == 'anonymous'  # Should default to 'anonymous'
+
+
+@pytest.mark.asyncio
+async def test_handle_post_message_missing_timestamp(message_handler):
+    """Test handling message post with missing timestamp."""
+    request = AsyncMock()
+    request.json = AsyncMock(return_value={
+        'content': 'Test message',
+        'author': 'test_user'
+    })
+
+    response = await message_handler.handle_post_message(request)
+    assert response['success'] is True
+    assert 'data' in response
+    stored_message = response['data']
+    assert stored_message['content'] == 'Test message'
+    assert stored_message['author'] == 'test_user'
+    assert 'timestamp' in stored_message  # Should auto-generate timestamp
+
+
+@pytest.mark.asyncio
+async def test_handle_post_message_empty_content(message_handler):
+    """Test handling message post with empty content."""
+    request = AsyncMock()
+    request.json = AsyncMock(return_value={
+        'content': '',
+        'author': 'test_user',
+        'timestamp': '2025-01-17T14:51:18-05:00'
+    })
+
+    response = await message_handler.handle_post_message(request)
+    assert response['success'] is False
+    assert 'error' in response
+
+
+@pytest.mark.asyncio
+async def test_handle_post_message_whitespace_content(message_handler):
+    """Test handling message post with whitespace-only content."""
+    request = AsyncMock()
+    request.json = AsyncMock(return_value={
+        'content': '   \n\t  ',
+        'author': 'test_user',
+        'timestamp': '2025-01-17T14:51:18-05:00'
+    })
+
+    response = await message_handler.handle_post_message(request)
+    assert response['success'] is False
+    assert 'error' in response
+
+
+@pytest.mark.asyncio
+async def test_handle_post_message_invalid_json(message_handler):
+    """Test handling message post with invalid JSON."""
+    request = AsyncMock()
+    request.json.side_effect = json.JSONDecodeError('Invalid JSON', '', 0)
+
+    response = await message_handler.handle_post_message(request)
+    assert response['success'] is False
+    assert 'error' in response
+
+
+@pytest.mark.asyncio
+async def test_create_message_with_current_time(message_handler):
+    """Test creating a message with auto-generated current time."""
+    message = await message_handler.create_message(
+        content='Test message',
+        author='test_user'
+    )
+    
+    assert message['id'] == 1
+    assert message['content'] == 'Test message'
+    assert message['author'] == 'test_user'
+    assert 'timestamp' in message
+    # Verify timestamp format
+    datetime.fromisoformat(message['timestamp'])  # Should not raise error
