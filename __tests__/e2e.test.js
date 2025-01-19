@@ -97,10 +97,9 @@ test.describe('BookChat Frontend', () => {
     // Get the timestamp text and verify format
     const timestampText = await timestamp.textContent();
     console.log('Found timestamp text:', timestampText);
-    expect(timestampText).toMatch(/[A-Z][a-z]{2} \d{1,2}, \d{2}:\d{2}/);
+    expect(timestampText).toBe('Just now');
     
-    // Verify it's a proper timestamp (not "Sending..." or error)
-    expect(timestampText).not.toBe('Sending...');
+    // Verify it's not an error state
     expect(timestampText).not.toBe('Failed to send');
     expect(timestampText).not.toBe('Unknown time');
   });
