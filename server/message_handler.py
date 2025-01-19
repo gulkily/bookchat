@@ -98,8 +98,15 @@ class MessageHandler:
                 data = await request.json()
                 
             content = data.get('content', '').strip()
-            author = data.get('author', '') or data.get('username', '').strip()
+            author = data.get('author', '') or data.get('username', '').strip() or 'anonymous'
             timestamp = data.get('timestamp')
+            
+            # Validate content
+            if not content:
+                return {
+                    'success': False,
+                    'error': 'Message content cannot be empty'
+                }
             
             logger.info(f"Creating message with content: {content}, author: {author}, timestamp: {timestamp}")
             message = await self.create_message(
