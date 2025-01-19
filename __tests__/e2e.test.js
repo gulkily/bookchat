@@ -59,44 +59,35 @@ test.describe('BookChat Frontend', () => {
     page.on('console', msg => console.log('Browser log:', msg.text()));
     
     // Wait for the message input to be available
-    console.log('Waiting for message input...');
     const messageInput = page.locator('#message-input');
     await messageInput.waitFor({ state: 'visible' });
     await highlight(messageInput);
-    console.log('Message input found');
     
     // Type and send a message
     const testMessage = 'Testing message status';
-    console.log('Filling message:', testMessage);
     await messageInput.fill(testMessage);
     
     const sendButton = page.locator('#send-button');
     await highlight(sendButton);
     
     // Set up response listener before clicking
-    console.log('Setting up POST response listener...');
     const responsePromise = page.waitForResponse(
       response => response.url().includes('/messages') && 
                  response.request().method() === 'POST'
     );
     
     // Click send button
-    console.log('Clicking send button...');
     await sendButton.click();
     
     // Wait for the POST request to complete first
-    console.log('Waiting for POST response...');
     const response = await responsePromise;
-    console.log('Got POST response:', response.status());
     expect(response.ok()).toBeTruthy();
     
     // Now look for the timestamp
     const timestamp = page.locator('.message:last-child .timestamp');
-    console.log('Checking timestamp...');
     
     // Get the timestamp text and verify format
     const timestampText = await timestamp.textContent();
-    console.log('Found timestamp text:', timestampText);
     expect(timestampText).toBe('Just now');
     
     // Verify it's not an error state
@@ -150,5 +141,84 @@ test.describe('BookChat Frontend', () => {
       timeout: 5000
     });
     await highlight(persistedMessage);
+  });
+
+  test('handles empty message submission', async ({ page }) => {
+    // Wait for the message input to be available
+    const messageInput = page.locator('#message-input');
+    await messageInput.waitFor({ state: 'visible' });
+    
+    // Count messages before attempting to send empty message
+    const messagesBeforeSend = await page.locator('.message').count();
+    
+    // Try to send an empty message
+    const sendButton = page.locator('#send-button');
+    await sendButton.click();
+    
+    // Try to send only whitespace
+    await messageInput.fill('   ');
+    await sendButton.click();
+    
+    // Verify no new messages were added
+    const messagesAfterSend = await page.locator('.message').count();
+    expect(messagesAfterSend).toBe(messagesBeforeSend);
+  });
+
+  test('handles special characters and potential XSS', async ({ page }) => {
+    // Wait for the message input to be available
+    const messageInput = page.locator('#message-input');
+    await messageInput.waitFor({ state: 'visible' });
+    
+    // Test message with special characters and HTML/script injection
+    const specialMessage = '<script>alert("xss")</script><img src="x" onerror="alert(1)"> Hello & < > " \' 🎉';
+    await messageInput.fill(specialMessage);
+    
+    // Send the message
+    const sendButton = page.locator('#send-button');
+    await sendButton.click();
+    
+    // Wait for message to appear
+    const messageContent = page.locator('.message .content').last();
+    await expect(messageContent).toBeVisible();
+    
+    // Verify the message is properly escaped/sanitized
+    const messageHtml = await messageContent.innerHTML();
+    // Check that HTML tags are not executed but displayed as text
+    expect(messageHtml).not.toMatch(/<img[^>]+onerror=/);
+    expect(messageHtml).not.toMatch(/<script>/);
+    
+    // Verify the original text is preserved but safely displayed
+    await expect(messageContent).toContainText('onerror=');  // The text should be visible
+    await expect(messageContent).toContainText('<script>');  // The text should be visible
+    
+    // Verify emojis and special characters are preserved
+    await expect(messageContent).toContainText('🎉');
+    await expect(messageContent).toContainText('Hello &');
+  });
+
+  test('handles network errors during message send', async ({ page }) => {
+    // Wait for the message input
+    const messageInput = page.locator('#message-input');
+    await messageInput.waitFor({ state: 'visible' });
+    
+    // Mock a failed network request
+    await page.route('**/messages', route => route.abort('failed'));
+    
+    // Try to send a message
+    await messageInput.fill('This message should fail to send');
+    const sendButton = page.locator('#send-button');
+    await sendButton.click();
+    
+    // Verify error state
+    const errorMessage = page.locator('.error-message');
+    await expect(errorMessage).toBeVisible();
+    await expect(errorMessage).toContainText('Failed to send message');
+    
+    // Verify the message status shows failed
+    const messageStatus = page.locator('.message .timestamp').last();
+    await expect(messageStatus).toContainText('Failed to send');
+    
+    // Remove the route override
+    await page.unroute('**/messages');
   });
 });
