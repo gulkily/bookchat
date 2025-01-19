@@ -354,33 +354,33 @@ function setupMessageInput() {
 }
 
 // Format timestamp into a human-readable format
-function formatTimestamp(isoTimestamp) {
+function formatTimestamp(timestamp) {
     try {
-        const date = new Date(isoTimestamp);
+        const date = new Date(timestamp);
+        if (isNaN(date.getTime())) {
+            return timestamp; // Return original string if invalid date
+        }
+        
         const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / (1000 * 60));
-        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-        if (diffMins < 1) {
+        const diff = now - date;
+        const seconds = Math.floor(diff / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+        
+        if (seconds < 60) {
             return 'Just now';
-        } else if (diffMins < 60) {
-            return `${diffMins}m ago`;
-        } else if (diffHours < 24) {
-            return `${diffHours}h ago`;
-        } else if (diffDays < 7) {
-            return `${diffDays}d ago`;
+        } else if (minutes < 60) {
+            return `${minutes}m ago`;
+        } else if (hours < 24) {
+            return `${hours}h ago`;
+        } else if (days < 7) {
+            return `${days}d ago`;
         } else {
-            return date.toLocaleDateString(undefined, { 
-                month: 'short', 
-                day: 'numeric',
-                year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-            });
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         }
     } catch (e) {
-        console.error('Error formatting timestamp:', e);
-        return isoTimestamp; // Fallback to raw timestamp
+        return timestamp; // Return original string if any error occurs
     }
 }
 
