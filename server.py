@@ -131,7 +131,7 @@ class ChatRequestHandler(BaseHTTPRequestHandler):
                 logging.info(f"Test message response: {test_message}")
                 self.send_json_response(test_message)
             elif parsed_url.path == '/' or parsed_url.path == '/index.html':
-                self.serve_file('templates/chat.html', 'text/html')
+                self.serve_file('templates/index.html', 'text/html')
             elif parsed_url.path == '/favicon.ico':
                 try:
                     self.serve_file('static/favicon.ico', 'image/x-icon')
