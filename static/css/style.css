@@ -27,6 +27,9 @@
     --signature-bg: #f5f5f5;
     --signature-text: #666;
     --signature-icon: #4CAF50;
+    --text-default: #333;
+    --shadow-light: rgba(0, 0, 0, 0.1);
+    --shadow-focus: rgba(0, 123, 255, 0.25);
 }
 
 [data-theme="dark"] {
@@ -57,6 +60,9 @@
     --signature-bg: #1f2937;
     --signature-text: #9ca3af;
     --signature-icon: #34d399;
+    --text-default: #f3f4f6;
+    --shadow-light: rgba(0, 0, 0, 0.25);
+    --shadow-focus: rgba(59, 130, 246, 0.5);
 }
 
 body {
@@ -134,13 +140,13 @@ body {
 }
 
 .current-username {
-    color: #666;
+    color: var(--text-default);
     font-size: 0.9em;
 }
 
 #header {
     padding: 10px;
-    border-bottom: 1px solid #ccc;
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -148,20 +154,20 @@ body {
 
 #current-username {
     font-weight: bold;
-    color: #333;
+    color: var(--text-default);
 }
 
 #change-username-btn {
     padding: 5px 10px;
-    background-color: #4CAF50;
-    color: white;
+    background-color: var(--button-bg);
+    color: var(--button-text);
     border: none;
     border-radius: 4px;
     cursor: pointer;
 }
 
 #change-username-btn:hover {
-    background-color: #45a049;
+    background-color: var(--button-hover);
 }
 
 /* Messages area */
@@ -193,6 +199,7 @@ body {
     word-wrap: break-word;
     overflow-wrap: break-word;
     word-break: break-all;
+    color: var(--text-default);
 }
 
 .message:hover {
@@ -218,7 +225,7 @@ body {
 
 .message .author {
     font-weight: 600;
-    color: #2563eb;
+    color: var(--button-bg);
     font-size: 0.95em;
     letter-spacing: -0.01em;
 }
@@ -254,7 +261,7 @@ body {
 
 .message .author.verified::after {
     content: "✓";
-    color: #10b981;
+    color: var(--signature-icon);
     margin-left: 6px;
     font-size: 0.9em;
 }
@@ -263,7 +270,7 @@ body {
     margin-top: 6px;
     white-space: pre-wrap;
     line-height: 1.5;
-    color: var(--text-primary);
+    color: var(--text-default);
     font-size: 0.95em;
 }
 
@@ -323,12 +330,12 @@ body {
 }
 
 .message .signature-verified {
-    color: #4CAF50;
+    color: var(--signature-icon);
     font-weight: 500;
 }
 
 .message .signature-unverified {
-    color: #f44336;
+    color: var(--error-text);
     font-weight: 500;
 }
 
@@ -341,13 +348,13 @@ body {
 .message .author.signed::after {
     content: "🔒";
     font-size: 0.9em;
-    color: #4CAF50;
+    color: var(--signature-icon);
 }
 
 /* Message source link */
 .message .source-link {
     margin-left: 8px;
-    color: #666;
+    color: var(--text-secondary);
     text-decoration: none;
     font-size: 1.1em;
     opacity: 0.7;
@@ -428,33 +435,33 @@ body {
 }
 
 .char-counter.warning {
-    background: #fff3dc;
-    color: #92400e;
+    background: var(--error-bg);
+    color: var(--error-text);
 }
 
 .char-counter.danger {
-    background: #fee2e2;
-    color: #991b1b;
+    background: var(--error-bg);
+    color: var(--error-text);
 }
 
 [data-theme="dark"] .char-counter.warning {
-    background: #78350f;
-    color: #fcd34d;
+    background: var(--error-bg);
+    color: var(--error-text);
 }
 
 [data-theme="dark"] .char-counter.danger {
-    background: #7f1d1d;
-    color: #fca5a5;
+    background: var(--error-bg);
+    color: var(--error-text);
 }
 
 /* Error states */
 #message-input.error {
-    border-color: #ff4444;
+    border-color: var(--error-text);
     animation: shake 0.5s;
 }
 
 .error-message {
-    color: #ff4444;
+    color: var(--error-text);
     font-size: 14px;
     margin-top: 8px;
     text-align: center;
@@ -512,40 +519,40 @@ body {
 }
 
 .verification-status.verified {
-    background-color: #4CAF50;
+    background-color: var(--signature-icon);
     color: white;
 }
 
 .verification-status.pending {
-    background-color: #FFC107;
-    color: #333;
+    background-color: var(--info-bg);
+    color: var(--info-text);
 }
 
 .verification-status.unverified {
-    background-color: #F44336;
+    background-color: var(--error-bg);
     color: white;
 }
 
 /* Verification Details Button */
 .verification-details-btn {
     background: none;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 12px;
-    color: #666;
+    color: var(--text-secondary);
     cursor: pointer;
     margin-left: 8px;
 }
 
 .verification-details-btn:hover {
-    background: #f5f5f5;
+    background: var(--bg-secondary);
 }
 
 /* Verification Details Panel */
 .verification-details {
-    background: #f9f9f9;
-    border: 1px solid #eee;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     padding: 12px;
     margin-top: 8px;
@@ -554,12 +561,12 @@ body {
 
 .verification-details h4 {
     margin: 0 0 8px 0;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .verification-details p {
     margin: 4px 0;
-    color: #666;
+    color: var(--text-secondary);
 }
 
 /* Global Verification Status */
@@ -575,17 +582,17 @@ body {
 }
 
 #global-verification-status.verified {
-    background-color: #4CAF50;
+    background-color: var(--signature-icon);
     color: white;
 }
 
 #global-verification-status.partial {
-    background-color: #FFC107;
-    color: #333;
+    background-color: var(--info-bg);
+    color: var(--info-text);
 }
 
 #global-verification-status.unverified {
-    background-color: #F44336;
+    background-color: var(--error-bg);
     color: white;
 }
 
@@ -805,19 +812,19 @@ body {
 }
 
 .status-good {
-    background-color: #4CAF50;
+    background-color: var(--signature-icon);
 }
 
 .status-error {
-    background-color: #f44336;
+    background-color: var(--error-bg);
 }
 
 .status-disabled {
-    background-color: #9e9e9e;
+    background-color: var(--border-color);
 }
 
 .status-note {
-    color: #666;
+    color: var(--text-secondary);
     font-size: 0.9em;
     margin-left: 8px;
     font-style: italic;
@@ -865,16 +872,16 @@ body {
 }
 
 .commit-hash a {
-    color: #666;
+    color: var(--text-secondary);
     text-decoration: none;
     padding: 2px 4px;
     border-radius: 3px;
-    background: #f0f0f0;
+    background: var(--bg-secondary);
 }
 
 .commit-hash a:hover {
-    background: #e0e0e0;
-    color: #333;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
 }
 
 /* Adjust header spacing */
@@ -890,7 +897,7 @@ body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 20px;
-    background-color: #f5f5f5;
+    background-color: var(--bg-primary);
 }
 
 #chat-container {
@@ -898,7 +905,7 @@ body {
     margin: 0 auto;
     background-color: white;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px var(--shadow-light);
     display: flex;
     flex-direction: column;
     height: 80vh;
@@ -914,27 +921,29 @@ body {
     margin-bottom: 20px;
     padding: 10px;
     border-radius: 8px;
-    background-color: #f8f9fa;
+    background-color: var(--message-bg);
+    color: var(--text-default);
 }
 
 .message-header {
     display: flex;
     justify-content: space-between;
     margin-bottom: 8px;
-    color: #666;
+    color: var(--text-secondary);
     font-size: 0.9em;
 }
 
 .author {
     font-weight: bold;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .timestamp {
-    color: #999;
+    color: var(--text-secondary);
 }
 
 .content {
     white-space: pre-wrap;
     word-break: break-word;
+    color: var(--text-default);
 }
