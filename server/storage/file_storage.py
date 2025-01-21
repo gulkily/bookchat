@@ -148,7 +148,8 @@ class FileStorage:
             # Sync the new message to GitHub if GitManager is available
             if self.git_manager:
                 try:
-                    self.git_manager.sync_changes_to_github(message_path, message['author'])
+                    commit_message = f'Add message {message_id} from {message["author"]}'
+                    self.git_manager.sync_changes_to_github(message_path, message['author'], commit_message)
                     logger.info(f"Successfully synced message {message_id} to GitHub")
                 except Exception as sync_error:
                     logger.error(f"Failed to sync message to GitHub: {sync_error}")

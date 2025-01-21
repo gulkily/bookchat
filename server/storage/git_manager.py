@@ -197,9 +197,9 @@ class GitManager:
         self.key_manager = KeyManager(private_keys_dir, public_keys_dir)
         
         # GitHub sync is required as per spec
-        self.use_github = not test_mode
-        if not self.github_token or not self.repo_name:
-            raise ValueError("GitHub token and repo name are required for message storage")
+        self.use_github = not test_mode and os.environ.get('SYNC_TO_GITHUB') == 'true'
+        if self.use_github and (not self.github_token or not self.repo_name):
+            raise ValueError("GitHub token and repo name are required for GitHub sync")
         
         # Add last pull timestamp to prevent too frequent pulls
         self.last_pull_time = 0
@@ -226,6 +226,24 @@ class GitManager:
         public_keys_dir = self.repo_path / 'identity/public_keys'
         public_keys_dir.mkdir(parents=True, exist_ok=True)
         self.key_manager.export_public_key(public_keys_dir / 'anonymous.pub')
+        
+        # Initialize git if needed
+        if not (self.repo_path / '.git').exists():
+            self._run_git_command(['init'])
+            self._run_git_command(['config', 'user.email', 'bookchat@example.com'])
+            self._run_git_command(['config', 'user.name', 'BookChat Bot'])
+            
+            # Add and commit initial files
+            self._run_git_command(['add', '.'])
+            self._run_git_command(['commit', '-m', 'Initial commit'])
+            
+            if self.use_github:
+                # Add remote and configure token
+                self._run_git_command(['remote', 'add', 'origin', f'https://github.com/{self.repo_name}.git'])
+                if self.github_token:
+                    self._run_git_command(['config', '--local', 'http.https://github.com/.extraheader', f'AUTHORIZATION: basic {self.github_token}'])
+                # Initial push
+                self._run_git_command(['push', '-u', 'origin', 'main'])
         
         # Sync public key if GitHub is enabled
         if self.use_github:
