@@ -33,12 +33,16 @@ DEFAULT_DEBUG = False
 DEFAULT_STORAGE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
 DEFAULT_STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
 
+# Paths
+ROOT_DIR = Path(__file__).parent.parent
+STATIC_DIR = os.getenv(ENV_STATIC_DIR, str(ROOT_DIR / 'static'))
+TEMPLATES_DIR = str(ROOT_DIR / 'templates')
+STORAGE_DIR = os.getenv(ENV_STORAGE_DIR, str(ROOT_DIR / 'data'))
+
 # Get values from environment variables with defaults
 PORT = int(os.getenv(ENV_PORT, DEFAULT_PORT))
 HOST = os.getenv(ENV_HOST, DEFAULT_HOST)
 DEBUG = os.getenv(ENV_DEBUG, str(DEFAULT_DEBUG)).lower() == 'true'
-STORAGE_DIR = os.getenv(ENV_STORAGE_DIR, DEFAULT_STORAGE_DIR)
-STATIC_DIR = os.getenv(ENV_STATIC_DIR, DEFAULT_STATIC_DIR)
 
 # Message verification settings
 MESSAGE_VERIFICATION = os.getenv(ENV_MESSAGE_VERIFICATION, 'True').lower() == 'true'
@@ -52,6 +56,7 @@ GITHUB_REPO_NAME = os.getenv(ENV_GITHUB_REPO_NAME)
 # Create necessary directories
 os.makedirs(STORAGE_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
+os.makedirs(TEMPLATES_DIR, exist_ok=True)
 
 # Create a Path object for the project root
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -64,6 +69,7 @@ def get_config():
         'DEBUG': DEBUG,
         'STORAGE_DIR': STORAGE_DIR,
         'STATIC_DIR': STATIC_DIR,
+        'TEMPLATES_DIR': TEMPLATES_DIR,
         'MESSAGE_VERIFICATION': MESSAGE_VERIFICATION,
         'ENABLE_FORK_SYNC': ENABLE_FORK_SYNC,
         'GITHUB_TOKEN': GITHUB_TOKEN,

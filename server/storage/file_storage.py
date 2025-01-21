@@ -85,6 +85,11 @@ class FileStorage:
 
         return messages
 
+    async def get_archived_messages(self) -> List[Dict[str, Union[str, dict]]]:
+        """Get all archived messages from storage."""
+        # For now, return an empty list since archive functionality is not implemented
+        return []
+
     async def save_message(self, message: Dict[str, str]) -> Optional[str]:
         """Save a message to storage.
         

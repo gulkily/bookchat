@@ -2,7 +2,6 @@
 
 from server.handler_methods import (
     serve_messages,
-    serve_status_page,
     handle_message_post,
     handle_username_change
 )
@@ -19,8 +18,6 @@ class ChatRequestHandler:
         if request.method == 'GET':
             if request.path == '/messages':
                 return await serve_messages(request)
-            elif request.path == '/status':
-                return await serve_status_page(request)
         elif request.method == 'POST':
             if request.path == '/messages':
                 return await handle_message_post(request)

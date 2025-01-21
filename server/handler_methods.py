@@ -3,40 +3,28 @@
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 
 from aiohttp import web
 
 from server.config import (
     STATIC_DIR,
-    MESSAGE_VERIFICATION
+    TEMPLATES_DIR
 )
+
 from server.message_handler import MessageHandler
 
 logger = logging.getLogger(__name__)
 
 async def serve_messages(request):
-    """Serve messages from storage."""
+    """Serve messages."""
     try:
         message_handler = MessageHandler(request.app['storage'])
         response = await message_handler.handle_get_messages()
         return web.json_response(response)
     except Exception as e:
         logger.error(f'Error serving messages: {e}')
-        return web.json_response({
-            'success': False,
-            'error': str(e)
-        }, status=500)
-
-async def serve_status_page(request):
-    """Serve status page."""
-    try:
-        return web.json_response({
-            'status': 'ok',
-            'timestamp': datetime.now().isoformat()
-        })
-    except Exception as e:
-        logger.error(f'Error serving status page: {e}')
         return web.json_response({
             'success': False,
             'error': str(e)

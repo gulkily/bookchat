@@ -32,36 +32,46 @@
     --shadow-focus: rgba(0, 123, 255, 0.25);
 }
 
-[data-theme="dark"] {
-    /* Dark theme variables */
-    --bg-primary: #111827;
-    --bg-secondary: #1f2937;
-    --text-primary: #f3f4f6;
-    --text-secondary: #9ca3af;
-    --border-color: #374151;
-    --message-bg: #1f2937;
+body.light-theme {
+    --bg-color: #ffffff;
+    --text-color: #333333;
+    --link-color: #0066cc;
+    --border-color: #dddddd;
+}
+
+body.dark-theme {
+    --bg-color: #1a1a1a;
+    --text-color: #ffffff;
+    --link-color: #66b3ff;
+    --border-color: #444444;
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --border-color: #444444;
+    --message-bg: #2d2d2d;
     --message-shadow: rgba(0,0,0,0.2);
     --message-hover-shadow: rgba(0,0,0,0.3);
-    --message-border: #374151;
+    --message-border: #404040;
     --button-bg: #3b82f6;
     --button-hover: #2563eb;
     --button-text: #ffffff;
-    --input-bg: #1f2937;
-    --input-border: #374151;
-    --input-text: #f3f4f6;
-    --bg-code: #1f2937;
+    --input-bg: #2d2d2d;
+    --input-border: #404040;
+    --input-text: #e2e8f0;
+    --bg-code: #2d2d2d;
     --success-bg: #064e3b;
-    --success-text: #6ee7b7;
+    --success-text: #34d399;
     --error-bg: #7f1d1d;
     --error-text: #fca5a5;
     --info-bg: #1e3a8a;
     --info-text: #93c5fd;
-    --signature-border: #374151;
-    --signature-bg: #1f2937;
-    --signature-text: #9ca3af;
+    --signature-border: #404040;
+    --signature-bg: #2d2d2d;
+    --signature-text: #94a3b8;
     --signature-icon: #34d399;
-    --text-default: #f3f4f6;
-    --shadow-light: rgba(0, 0, 0, 0.25);
+    --text-default: #e2e8f0;
+    --shadow-light: rgba(0, 0, 0, 0.3);
     --shadow-focus: rgba(59, 130, 246, 0.5);
 }
 
@@ -69,8 +79,8 @@ body {
     margin: 0;
     padding: 0;
     font-family: system-ui, -apple-system, sans-serif;
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
+    background-color: var(--bg-color);
+    color: var(--text-color);
 }
 
 .container {
@@ -897,7 +907,7 @@ body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 20px;
-    background-color: var(--bg-primary);
+    background-color: var(--bg-color);
 }
 
 #chat-container {

@@ -5,7 +5,7 @@ const PORT = process.env.SERVER_PORT || 5000;
 
 module.exports = defineConfig({
   testDir: './__tests__',
-  testMatch: '**/e2e.test.js',
+  testMatch: '**/*.test.js',  // Run all test files
   use: {
     baseURL: `http://localhost:${PORT}`,
     screenshot: 'only-on-failure',

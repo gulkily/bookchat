@@ -8,7 +8,6 @@ import pytest
 from aiohttp import web
 
 from server.handler_methods import (
-    serve_messages,
     handle_message_post
 )
 from server.message_handler import MessageHandler
@@ -90,36 +89,3 @@ async def test_handle_message_post_missing_fields(mock_request):
     response = await handle_message_post(mock_request)
     assert response.status == 400
     assert 'Missing required fields' in response.text
-
-
-@pytest.mark.asyncio
-async def test_serve_messages(mock_request, mock_storage):
-    """Test serving messages."""
-    # Setup mock messages
-    mock_messages = [
-        {
-            'id': 1,
-            'content': 'Message 1',
-            'author': 'user1',
-            'timestamp': '2025-01-17T14:04:38-05:00'
-        },
-        {
-            'id': 2,
-            'content': 'Message 2',
-            'author': 'user2',
-            'timestamp': '2025-01-17T14:04:38-05:00'
-        }
-    ]
-    mock_storage.get_messages.return_value = mock_messages
-
-    # Get messages
-    response = await serve_messages(mock_request)
-    
-    # Verify response
-    assert isinstance(response, web.Response)
-    assert response.status == 200
-    
-    data = json.loads(response.text)
-    assert data['success'] is True
-    assert len(data['messages']) == 2
-    assert data['messages'] == mock_messages

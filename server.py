@@ -9,6 +9,7 @@ import webbrowser
 import threading
 import platform
 import sys
+import subprocess
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from datetime import datetime
@@ -273,6 +274,80 @@ class ChatRequestHandler(BaseHTTPRequestHandler):
             if not isinstance(e, (BrokenPipeError, ConnectionResetError)):
                 logging.error(f"Error serving file {filepath}: {str(e)}")
                 self.send_error(500, str(e))
+
+    def render_template(self, template_path, context):
+        """Simple template rendering without external dependencies."""
+        try:
+            with open(template_path, 'r') as f:
+                content = f.read()
+                
+            # Replace template variables
+            for key, value in context.items():
+                content = content.replace('{{ ' + key + ' }}', str(value))
+                content = content.replace('{{' + key + '}}', str(value))
+            
+            # Handle simple conditionals
+            while '{%' in content and '%}' in content:
+                start = content.find('{%')
+                end = content.find('%}', start) + 2
+                condition = content[start:end]
+                
+                # Parse the condition
+                if 'if' in condition:
+                    cond_start = condition.find('if') + 2
+                    cond_end = condition.find('else') if 'else' in condition else condition.find('%}')
+                    cond_expr = condition[cond_start:cond_end].strip()
+                    
+                    # Find the matching endif
+                    endif_pos = content.find('{% endif %}', end)
+                    if endif_pos == -1:
+                        break
+                        
+                    # Get the if/else blocks
+                    if_else_content = content[end:endif_pos]
+                    if_content = if_else_content
+                    else_content = ''
+                    
+                    if 'else' in if_else_content:
+                        else_start = if_else_content.find('{% else %}')
+                        if_content = if_else_content[:else_start]
+                        else_content = if_else_content[else_start + 10:]
+                    
+                    # Evaluate the condition
+                    try:
+                        # Create a safe evaluation context with only the variables from context
+                        eval_context = dict(context)
+                        result = eval(cond_expr, {"__builtins__": {}}, eval_context)
+                        
+                        # Replace the entire conditional block
+                        full_block = content[start:endif_pos + 9]
+                        content = content.replace(full_block, if_content.strip() if result else else_content.strip())
+                    except Exception as e:
+                        logging.error(f"Error evaluating condition {cond_expr}: {e}")
+                        # Remove the conditional if evaluation fails
+                        full_block = content[start:endif_pos + 9]
+                        content = content.replace(full_block, '')
+                else:
+                    # Remove unsupported template tags
+                    content = content.replace(condition, '')
+            
+            return content
+        except Exception as e:
+            logging.error(f"Error rendering template {template_path}: {e}")
+            return f"Error rendering template: {str(e)}"
+
+    def serve_template(self, template_path, context):
+        """Serve a template with the given context."""
+        try:
+            content = self.render_template(template_path, context)
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(content.encode())
+        except Exception as e:
+            logging.error(f"Error serving template {template_path}: {e}")
+            self.send_error(500, str(e))
 
 class ChatServer(HTTPServer):
     """Chat server implementation."""

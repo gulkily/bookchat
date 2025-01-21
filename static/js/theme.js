@@ -8,7 +8,9 @@ function getPreferredTheme() {
 }
 
 function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
+    const body = document.body;
+    body.classList.remove('dark-theme', 'light-theme');
+    body.classList.add(`${theme}-theme`);
     localStorage.setItem('theme', theme);
     const themeToggleText = document.getElementById('theme-toggle-text');
     if (themeToggleText) {
@@ -24,8 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            const isDarkTheme = document.body.classList.contains('dark-theme');
+            const newTheme = isDarkTheme ? 'light' : 'dark';
             applyTheme(newTheme);
         });
     }
