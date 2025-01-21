@@ -25,6 +25,7 @@ ENV_ENABLE_FORK_SYNC = 'ENABLE_FORK_SYNC'
 ENV_GITHUB_TOKEN = 'GITHUB_TOKEN'
 ENV_GITHUB_REPO_OWNER = 'GITHUB_REPO_OWNER'
 ENV_GITHUB_REPO_NAME = 'GITHUB_REPO_NAME'
+ENV_SYNC_TO_GITHUB = 'SYNC_TO_GITHUB'
 
 # Default values
 DEFAULT_PORT = 8080
@@ -52,6 +53,7 @@ ENABLE_FORK_SYNC = os.getenv(ENV_ENABLE_FORK_SYNC, 'False').lower() == 'true'
 GITHUB_TOKEN = os.getenv(ENV_GITHUB_TOKEN)
 GITHUB_REPO_OWNER = os.getenv(ENV_GITHUB_REPO_OWNER)
 GITHUB_REPO_NAME = os.getenv(ENV_GITHUB_REPO_NAME)
+SYNC_TO_GITHUB = os.getenv(ENV_SYNC_TO_GITHUB, 'True').lower() == 'true'
 
 # Create necessary directories
 os.makedirs(STORAGE_DIR, exist_ok=True)
@@ -75,5 +77,6 @@ def get_config():
         'GITHUB_TOKEN': GITHUB_TOKEN,
         'GITHUB_REPO_OWNER': GITHUB_REPO_OWNER,
         'GITHUB_REPO_NAME': GITHUB_REPO_NAME,
+        'SYNC_TO_GITHUB': SYNC_TO_GITHUB,
         'data_dir': STORAGE_DIR,  # alias for backward compatibility
     }

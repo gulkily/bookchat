@@ -58,7 +58,7 @@ class GitStorage(StorageBackend):
         except Exception as e:
             logger.error(f"Failed to check Git status: {e}")
         
-    def init_storage(self) -> bool:
+    async def init_storage(self) -> bool:
         """Initialize the storage by creating necessary directories."""
         try:
             # Create messages directory if it doesn't exist
@@ -86,52 +86,35 @@ class GitStorage(StorageBackend):
             logger.error(f"Failed to initialize storage: {e}\n{traceback.format_exc()}")
             return False
     
-    def save_message(self, user: str, content: str, timestamp: datetime, sign: bool = True) -> bool:
+    async def save_message(self, message: Dict[str, str]) -> Optional[str]:
         """Save a new message to the Git repository.
         
         Args:
-            user: Username of the message sender
-            content: Message content
-            timestamp: Message timestamp
-            sign: Whether to sign the message
+            message: Dictionary containing message data (author, content, timestamp)
         
         Returns:
-            bool: True if successful, False otherwise
+            Message ID if successful, None otherwise
         """
         try:
-            logger.info(f"Saving message from user: {user}")
+            logger.info(f"Saving message from user: {message['author']}")
             
             # Format filename like existing messages: YYYYMMDD_HHMMSS_username.txt
-            filename = f"{timestamp.strftime('%Y%m%d_%H%M%S')}_{user}.txt"
+            timestamp = datetime.strptime(message['timestamp'], '%Y-%m-%dT%H:%M:%S%z')
+            filename = f"{timestamp.strftime('%Y%m%d_%H%M%S')}_{message['author']}.txt"
             message_path = self.messages_dir / filename
             logger.debug(f"Message will be saved to: {message_path}")
             
             # Check if messages directory exists
             if not self.messages_dir.exists():
                 logger.error(f"Messages directory does not exist: {self.messages_dir}")
-                return False
-            
-            # Sign message if requested
-            signature = None
-            if sign:
-                try:
-                    signature = self.git_manager.key_manager.sign_message(content)
-                    logger.debug(f"Message signed successfully: {signature[:32]}...")
-                except Exception as e:
-                    logger.error(f"Failed to sign message: {e}")
-                    # Continue without signature
+                return None
             
             # Format message with metadata footers
-            # Use RFC 3339 format that JavaScript can definitely parse
-            date_str = timestamp.astimezone().strftime('%Y-%m-%dT%H:%M:%S%z')
-            # Insert colon in timezone offset (e.g. +0000 -> +00:00)
-            date_str = date_str[:-2] + ':' + date_str[-2:]
-            
-            formatted_message = self.git_manager.format_message(
-                content,
-                user,
-                date_str,
-                signature=signature
+            formatted_message = (
+                f"ID: {filename}\n"
+                f"Content: {message['content']}\n"
+                f"Author: {message['author']}\n"
+                f"Timestamp: {message['timestamp']}\n"
             )
             
             # Write message to file
@@ -144,7 +127,7 @@ class GitStorage(StorageBackend):
                 logger.debug(f"File contents after write: {message_path.read_text() if message_path.exists() else 'FILE NOT FOUND'}")
             except Exception as e:
                 logger.error(f"Failed to write message file: {e}\n{traceback.format_exc()}")
-                return False
+                return None
             
             # Stage and commit the file
             logger.info("Committing message to Git repository")
@@ -162,7 +145,7 @@ class GitStorage(StorageBackend):
                     logger.warning(f"Git add stderr: {result.stderr}")
                 
                 # Commit the specific file
-                commit_msg = f'Add message from {user}'
+                commit_msg = f'Add message from {message["author"]}'
                 logger.debug(f"Running git commit with message: {commit_msg}")
                 result = subprocess.run(
                     ['git', 'commit', '--no-verify', str(message_path), '-m', commit_msg],
@@ -170,7 +153,7 @@ class GitStorage(StorageBackend):
                     check=True,
                     capture_output=True,
                     text=True,
-                    env={**os.environ, 'GIT_AUTHOR_NAME': user, 'GIT_AUTHOR_EMAIL': f'{user}@bookchat.local'}
+                    env={**os.environ, 'GIT_AUTHOR_NAME': message['author'], 'GIT_AUTHOR_EMAIL': f'{message["author"]}@bookchat.local'}
                 )
                 logger.debug(f"Git commit output: {result.stdout}")
                 if result.stderr:
@@ -179,89 +162,53 @@ class GitStorage(StorageBackend):
                 # Always sync to GitHub as per spec
                 logger.debug("Syncing message to GitHub...")
                 try:
-                    self.git_manager.sync_changes_to_github(str(message_path), user)
+                    self.git_manager.sync_changes_to_github(str(message_path), message['author'], commit_msg)
                     logger.debug("Successfully synced to GitHub")
                 except Exception as e:
                     logger.error(f"Failed to sync to GitHub: {e}")
                     # Fail the save operation if GitHub sync fails since it's required by spec
-                    return False
+                    return None
                 
                 logger.info("Message saved successfully")
-                return True
+                return filename.replace('.txt', '')
             except Exception as e:
                 logger.error(f"Failed to commit message: {e}\n{traceback.format_exc()}")
-                return False
+                return None
         except Exception as e:
             logger.error(f"Error saving message: {e}\n{traceback.format_exc()}")
-            return False
-    
-    def get_messages(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Retrieve messages from the Git repository.
-        
-        Args:
-            limit: Optional maximum number of messages to retrieve
-        
-        Returns:
-            List of message dictionaries
-        """
-        # Pull latest changes once at the start
-        if self.git_manager.use_github:
-            self.git_manager.pull_from_github()
-            
-        messages = []
-        
-        # List all files in messages directory
-        try:
-            message_files = sorted(
-                [f for f in self.messages_dir.glob('*.txt') if f.is_file()],
-                key=lambda x: x.stat().st_mtime,
-                reverse=True
-            )
-        except Exception as e:
-            logger.error(f"Failed to list messages directory: {e}")
-            return messages
-            
-        # Process each message file
-        for message_file in message_files:
-            try:
-                # Don't pull for each message, we already pulled at the start
-                message = self.git_manager.read_message(message_file.name, skip_pull=True)
-                if message:  # Skip None results (e.g. .gitkeep)
-                    messages.append(message)
-                    if limit and len(messages) >= limit:
-                        break
-            except Exception as e:
-                logger.error(f"Failed to read message {message_file}: {e}")
-                # Continue processing other messages
-                continue
-                
-        return messages
+            return None
 
-    def get_message_by_id(self, message_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieve a specific message by ID.
-        
-        Args:
-            message_id: ID of the message to retrieve
-        
-        Returns:
-            Message dictionary if found, None otherwise
-        """
+    async def get_messages(self) -> List[Dict[str, Any]]:
+        """Retrieve messages from the Git repository."""
         try:
-            # Message ID is the filename
-            message_path = self.messages_dir / message_id
-            if not message_path.exists():
-                logger.warning(f"Message not found: {message_id}")
-                return None
-            
-            # Read and parse the message
-            message = self.git_manager.read_message(message_id)
-            if not message:
-                logger.error(f"Failed to parse message: {message_id}")
-                return None
-            
-            # Add file link
-            message['file'] = f"messages/{message_id}"
-            return message
+            messages = []
+            message_files = sorted(self.messages_dir.glob('*.txt'))
+            for file_path in message_files:
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        message_data = self._parse_message_content(content)
+                        if message_data:
+                            messages.append(message_data)
+                except Exception as e:
+                    logger.error(f"Error reading message file {file_path}: {e}")
+                    continue
+            return messages
         except Exception as e:
-            logger.error(f"Error retrieving message {message_id}: {e}\n{traceback.format_exc()}")
+            logger.error(f"Error listing messages: {e}")
+            return []
+
+    async def get_message_by_id(self, message_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific message by ID."""
+        try:
+            message_path = self.messages_dir / f"{message_id}.txt"
+            if not message_path.exists():
+                return None
+
+            with open(message_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                return self._parse_message_content(content)
+
+        except Exception as e:
+            logger.error(f"Error getting message: {e}")
             return None

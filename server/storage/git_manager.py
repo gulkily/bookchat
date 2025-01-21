@@ -356,7 +356,7 @@ class GitManager:
             logger.error(f"Exception: {str(e)}")
             return e
 
-    def sync_changes_to_github(self, filepath, author="BookChat Bot"):
+    def sync_changes_to_github(self, filepath, author="BookChat Bot", commit_message=None):
         """Sync changes to GitHub."""
         if not self.use_github:
             logger.debug("GitHub sync disabled, skipping")
@@ -389,7 +389,8 @@ class GitManager:
                 return
             
             # Commit the change
-            commit_message = f'Update user key for {author}'
+            if commit_message is None:
+                commit_message = f'Add message from {author}'
             self._run_git_command(['git', 'commit', '-m', commit_message])
             
             # Push to GitHub
@@ -398,7 +399,7 @@ class GitManager:
             
         except subprocess.CalledProcessError as e:
             logger.error(f"Error syncing to GitHub: {e}")
-            # Continue without GitHub sync - don't raise the error
+            raise  # Re-raise the error since GitHub sync is required
 
     def sync_forks(self):
         """Sync with all forks listed in forks_list.txt."""

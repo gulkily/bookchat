@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Any
 from datetime import datetime
+import os
 
 class StorageBackend(ABC):
     """Abstract base class for storage backends."""
@@ -13,17 +14,24 @@ class StorageBackend(ABC):
         pass
     
     @abstractmethod
-    def save_message(self, user: str, content: str, timestamp: datetime) -> bool:
-        """Save a new message."""
+    async def save_message(self, message: Dict[str, str]) -> Optional[str]:
+        """Save a new message.
+        
+        Args:
+            message: Dictionary containing message data (author, content, timestamp)
+            
+        Returns:
+            Message ID if successful, None otherwise
+        """
         pass
     
     @abstractmethod
-    def get_messages(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Retrieve messages, optionally limited to a certain number."""
+    async def get_messages(self) -> List[Dict[str, Any]]:
+        """Retrieve messages."""
         pass
     
     @abstractmethod
-    def get_message_by_id(self, message_id: str) -> Optional[Dict[str, Any]]:
+    async def get_message_by_id(self, message_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve a specific message by ID."""
         pass
 
@@ -47,6 +55,6 @@ def init_storage(data_dir: str, use_git: bool = False) -> Union[FileStorage, Git
         Storage instance
     """
     Path(data_dir).mkdir(parents=True, exist_ok=True)
-    if use_git:
+    if os.getenv('SYNC_TO_GITHUB', 'false').lower() == 'true':
         return GitStorage(data_dir)
     return FileStorage(data_dir)

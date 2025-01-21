@@ -6,8 +6,9 @@ from aiohttp import web
 from server.config import get_config
 from server.handler_methods import handle_message_post, serve_messages
 from server.storage import init_storage
+from server.logger import setup_logging
 
-logger = logging.getLogger(__name__)
+logger = setup_logging()
 
 async def init_app() -> web.Application:
     """Initialize the application."""
