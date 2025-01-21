@@ -15,6 +15,7 @@ trap cleanup EXIT INT TERM
 
 # Start the Python server and capture its output
 echo "Starting Python server..."
+export NO_BROWSER=1
 python3 server.py 2>server_output.txt &
 SERVER_PID=$!
 

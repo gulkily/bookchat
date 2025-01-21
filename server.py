@@ -307,7 +307,10 @@ def run_server():
         # Start server
         server = ChatServer(('localhost', port), ChatRequestHandler)
         url = f'http://localhost:{port}'
-        threading.Thread(target=open_browser, args=(url,), daemon=True).start()
+        
+        # Only open browser if NO_BROWSER is not set
+        if not os.environ.get('NO_BROWSER'):
+            threading.Thread(target=open_browser, args=(url,), daemon=True).start()
         
         logging.info(f'Server running at {url}')
         server.serve_forever()
