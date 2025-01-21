@@ -14,7 +14,7 @@ class TestMessageStorage(unittest.IsolatedAsyncioTestCase):
         """Set up test environment."""
         # Create a test storage directory
         self.test_storage_dir = os.path.join(DEFAULT_STORAGE_DIR, 'test_storage')
-        self.storage = FileStorage(self.test_storage_dir)
+        self.storage = FileStorage(self.test_storage_dir, test_mode=True)
         self.handler = MessageHandler(self.storage)
         
         # Ensure test directory exists
@@ -22,13 +22,20 @@ class TestMessageStorage(unittest.IsolatedAsyncioTestCase):
     
     def tearDown(self):
         """Clean up test environment."""
-        # Clean up test files after each test
-        messages_dir = Path(self.test_storage_dir) / 'messages'
-        if messages_dir.exists():
-            for file in messages_dir.glob('*.txt'):
-                file.unlink()
-            messages_dir.rmdir()
-        Path(self.test_storage_dir).rmdir()
+        test_dir = Path(self.test_storage_dir)
+        
+        # Helper function to recursively remove directory
+        def remove_dir_recursive(path):
+            for item in path.iterdir():
+                if item.is_file():
+                    item.unlink()
+                elif item.is_dir():
+                    remove_dir_recursive(item)
+            path.rmdir()
+        
+        # Clean up test directory if it exists
+        if test_dir.exists():
+            remove_dir_recursive(test_dir)
     
     async def test_message_saved_to_filesystem(self):
         """Test that new messages are saved as files."""

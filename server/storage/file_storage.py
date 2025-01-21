@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class FileStorage:
     """File-based storage implementation."""
 
-    def __init__(self, data_dir: str):
+    def __init__(self, data_dir: str, test_mode: bool = False):
         """Initialize storage with data directory."""
         self.data_dir = Path(data_dir)
         self.messages_dir = self.data_dir / 'messages'
@@ -25,7 +25,11 @@ class FileStorage:
         github_repo = os.environ.get('GITHUB_REPO')
         sync_to_github = os.environ.get('SYNC_TO_GITHUB', 'false').lower() == 'true'
         
-        if sync_to_github and github_token and github_repo:
+        # Disable GitHub sync in test mode
+        if test_mode:
+            logger.info("Test mode: GitHub sync disabled")
+            self.git_manager = None
+        elif sync_to_github and github_token and github_repo:
             try:
                 self.git_manager = GitManager(self.data_dir)
                 logger.info("GitManager initialized successfully")
