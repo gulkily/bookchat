@@ -324,6 +324,10 @@ function setupMessageInput() {
             // Clear input immediately
             const originalContent = content;
             messageInput.value = '';
+            // Reset character counter
+            if (charCounter) {
+                charCounter.textContent = 'Characters: 0';
+            }
             
             const result = await sendMessage(originalContent);
             console.log('Send message result:', result);
@@ -333,6 +337,10 @@ function setupMessageInput() {
             } else {
                 console.error('Failed to send message:', result.error);
                 messageInput.value = originalContent;
+                // Update character counter to reflect restored content
+                if (charCounter) {
+                    charCounter.textContent = `Characters: ${originalContent.length}`;
+                }
                 messageInput.classList.add('error');
                 setTimeout(() => messageInput.classList.remove('error'), 2000);
                 
