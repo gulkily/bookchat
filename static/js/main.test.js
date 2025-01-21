@@ -2,6 +2,8 @@
  * Tests for main.js functionality
  */
 
+const { setupMessageInput } = require('./main.js');
+
 describe('formatTimestamp', () => {
     const now = new Date('2025-01-18T18:42:12-05:00');
     const originalDate = global.Date;
@@ -99,5 +101,40 @@ describe('sendMessage', () => {
         const result = await sendMessage('Test message');
         expect(result.success).toBe(false);
         expect(result.error).toContain('Network error');
+    });
+});
+
+describe('Character Counter', () => {
+    beforeEach(() => {
+        // Set up our document body
+        document.body.innerHTML = `
+            <form id="js-message-form">
+                <textarea id="message-input"></textarea>
+                <div id="js-char-counter" class="char-counter">Characters: 0</div>
+            </form>
+        `;
+        
+        // Initialize the message input
+        setupMessageInput();
+    });
+
+    test('updates character count when typing', () => {
+        const messageInput = document.getElementById('message-input');
+        const charCounter = document.getElementById('js-char-counter');
+        
+        // Simulate typing text
+        messageInput.value = 'Hello';
+        messageInput.dispatchEvent(new Event('input'));
+        expect(charCounter.textContent).toBe('Characters: 5');
+        
+        // Add more text
+        messageInput.value = 'Hello, world!';
+        messageInput.dispatchEvent(new Event('input'));
+        expect(charCounter.textContent).toBe('Characters: 13');
+        
+        // Clear text
+        messageInput.value = '';
+        messageInput.dispatchEvent(new Event('input'));
+        expect(charCounter.textContent).toBe('Characters: 0');
     });
 });

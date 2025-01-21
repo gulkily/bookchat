@@ -300,6 +300,15 @@ function setupMessageInput() {
     const messageInput = document.getElementById('message-input');
     
     if (messageForm && messageInput) {
+        // Add character counter functionality
+        const charCounter = document.getElementById('js-char-counter');
+        if (charCounter) {
+            messageInput.addEventListener('input', () => {
+                const count = messageInput.value.length;
+                charCounter.textContent = `Characters: ${count}`;
+            });
+        }
+
         // Function to validate and send message
         const validateAndSendMessage = async (content) => {
             // Ensure content is a string and properly trimmed
@@ -428,3 +437,10 @@ function updateGlobalVerificationStatus() {
 
 // Username validation regex - only allow alphanumeric and underscore, 3-20 chars
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
+
+// Export functions for testing
+module.exports = {
+    formatTimestamp,
+    sendMessage,
+    setupMessageInput
+};
