@@ -63,5 +63,4 @@ node_modules/
 # Git
 cloned_repos/
 forks_list.txt
-messages/
 .coverage

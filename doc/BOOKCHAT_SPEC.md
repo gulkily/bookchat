@@ -16,11 +16,12 @@ BookChat is a secure, signature-verified chat application that uses Git for mess
 ## Core Components
 
 ### 1. Message Storage
-- Messages are stored in a Git repository
+- Messages are stored in the project's Git repository
 - Each message is a separate `.txt` file in `messages/` directory
 - Message filenames follow the format: `YYYYMMDD_HHMMSS_username.txt`
 - Public keys are stored in `identity/public_keys/` directory as `{username}.pub`
 - Archived messages are moved to `archive/` directory
+- All messages must be committed and included in the repository, not gitignored
 
 ### 2. Message Format
 Messages are stored in text files using a Git-style format with the following structure:
