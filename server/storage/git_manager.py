@@ -174,15 +174,16 @@ class GitManager:
         self.keys_dir.mkdir(exist_ok=True)
         
         self.github_token = os.environ.get('GITHUB_TOKEN')
-        self.should_sync_to_github = os.environ.get('SYNC_TO_GITHUB', '').lower() == 'true'
         
         # Initialize key manager with both private and public key directories
         private_keys_dir = os.environ.get('KEYS_DIR', str(self.repo_path / 'keys'))
         public_keys_dir = os.environ.get('PUBLIC_KEYS_DIR', str(self.repo_path / 'identity/public_keys'))
         self.key_manager = KeyManager(private_keys_dir, public_keys_dir)
         
-        # Make GitHub optional
-        self.use_github = bool(self.github_token and self.repo_name and self.should_sync_to_github)
+        # GitHub sync is required as per spec
+        self.use_github = not test_mode
+        if not self.github_token or not self.repo_name:
+            raise ValueError("GitHub token and repo name are required for message storage")
         
         # Add last pull timestamp to prevent too frequent pulls
         self.last_pull_time = 0

@@ -176,15 +176,15 @@ class GitStorage(StorageBackend):
                 if result.stderr:
                     logger.warning(f"Git commit stderr: {result.stderr}")
                 
-                # Try to sync to GitHub if enabled
-                if os.getenv('SYNC_TO_GITHUB', '').lower() == 'true':
-                    logger.debug("Attempting to sync to GitHub...")
-                    try:
-                        self.git_manager.sync_changes_to_github(str(message_path), user)
-                        logger.debug("Successfully synced to GitHub")
-                    except Exception as e:
-                        logger.warning(f"Failed to sync to GitHub: {e}")
-                        # Don't fail the save operation if GitHub sync fails
+                # Always sync to GitHub as per spec
+                logger.debug("Syncing message to GitHub...")
+                try:
+                    self.git_manager.sync_changes_to_github(str(message_path), user)
+                    logger.debug("Successfully synced to GitHub")
+                except Exception as e:
+                    logger.error(f"Failed to sync to GitHub: {e}")
+                    # Fail the save operation if GitHub sync fails since it's required by spec
+                    return False
                 
                 logger.info("Message saved successfully")
                 return True
