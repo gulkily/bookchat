@@ -7,6 +7,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
+from server.storage.git_manager import GitManager
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,22 @@ class FileStorage:
         self.data_dir = Path(data_dir)
         self.messages_dir = self.data_dir / 'messages'
         self.messages_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize GitManager with proper configuration
+        github_token = os.environ.get('GITHUB_TOKEN')
+        github_repo = os.environ.get('GITHUB_REPO')
+        sync_to_github = os.environ.get('SYNC_TO_GITHUB', 'false').lower() == 'true'
+        
+        if sync_to_github and github_token and github_repo:
+            try:
+                self.git_manager = GitManager(self.data_dir)
+                logger.info("GitManager initialized successfully")
+            except Exception as e:
+                logger.error(f"Failed to initialize GitManager: {e}")
+                self.git_manager = None
+        else:
+            logger.warning("GitHub sync disabled or missing configuration")
+            self.git_manager = None
 
     def _parse_message_content(self, content: str) -> Dict[str, str]:
         """Parse message content looking for headers anywhere in the text.
@@ -123,6 +140,17 @@ class FileStorage:
             
             with open(message_path, 'w', encoding='utf-8') as f:
                 f.write(content)
+            
+            # Sync the new message to GitHub if GitManager is available
+            if self.git_manager:
+                try:
+                    self.git_manager.sync_changes_to_github(message_path, message['author'])
+                    logger.info(f"Successfully synced message {message_id} to GitHub")
+                except Exception as sync_error:
+                    logger.error(f"Failed to sync message to GitHub: {sync_error}")
+                    # Don't fail the save operation if sync fails
+            else:
+                logger.debug("Skipping GitHub sync - GitManager not available")
             
             return message_id
 
