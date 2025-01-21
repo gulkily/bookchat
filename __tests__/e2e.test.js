@@ -55,9 +55,6 @@ test.describe('BookChat Frontend', () => {
   });
 
   test('message sending status transitions correctly', async ({ page }) => {
-    // Enable console logging
-    page.on('console', msg => console.log('Browser log:', msg.text()));
-    
     // Wait for the message input to be available
     const messageInput = page.locator('#message-input');
     await messageInput.waitFor({ state: 'visible' });
@@ -109,6 +106,32 @@ test.describe('BookChat Frontend', () => {
     // Wait for the username display to update
     const usernameDisplay = page.locator('#username-display');
     await expect(usernameDisplay).toHaveText(newUsername, { timeout: 5000 });
+  });
+
+  test('character counter updates correctly', async ({ page }) => {
+    // Wait for the message input to be available
+    const messageInput = page.locator('#message-input');
+    await messageInput.waitFor({ state: 'visible' });
+    
+    // Get the character counter element
+    const charCounter = page.locator('#js-char-counter');
+    await charCounter.waitFor({ state: 'visible' });
+    await highlight(charCounter);
+
+    // Check initial state
+    await expect(charCounter).toHaveText('Characters: 0');
+
+    // Type a message and verify counter updates
+    await messageInput.fill('Hello');
+    await expect(charCounter).toHaveText('Characters: 5');
+
+    // Type a longer message
+    await messageInput.fill('Hello, world! This is a test message.');
+    await expect(charCounter).toHaveText('Characters: 37');
+
+    // Clear the message
+    await messageInput.fill('');
+    await expect(charCounter).toHaveText('Characters: 0');
   });
 
   test('message persistence across page reloads', async ({ page }) => {
