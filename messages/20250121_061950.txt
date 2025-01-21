@@ -1,4 +1,0 @@
-ID: 20250121_061950
-Content: test message
-Author: anonymous
-Timestamp: 2025-01-21T06:19:50-05:00
