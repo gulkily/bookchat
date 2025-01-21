@@ -2,7 +2,7 @@
  * Tests for main.js functionality
  */
 
-const { setupMessageInput } = require('./main.js');
+const { setupMessageInput, formatTimestamp, sendMessage } = require('./main.js');
 
 describe('formatTimestamp', () => {
     const now = new Date('2025-01-18T18:42:12-05:00');
