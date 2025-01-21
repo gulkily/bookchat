@@ -22,6 +22,7 @@ BookChat is a secure, signature-verified chat application that uses Git for mess
 - Public keys are stored in `identity/public_keys/` directory as `{username}.pub`
 - Archived messages are moved to `archive/` directory
 - All messages must be committed and included in the repository, not gitignored
+- When a new message is added, it must be immediately committed and pushed to the repository
 
 ### 2. Message Format
 Messages are stored in text files using a Git-style format with the following structure:
