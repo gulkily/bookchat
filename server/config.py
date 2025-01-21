@@ -3,6 +3,10 @@
 import os
 import logging
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -31,14 +35,14 @@ ENV_SYNC_TO_GITHUB = 'SYNC_TO_GITHUB'
 DEFAULT_PORT = 8080
 DEFAULT_HOST = '0.0.0.0'
 DEFAULT_DEBUG = False
-DEFAULT_STORAGE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
+DEFAULT_STORAGE_DIR = os.path.dirname(os.path.dirname(__file__))
 DEFAULT_STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
 
 # Paths
 ROOT_DIR = Path(__file__).parent.parent
 STATIC_DIR = os.getenv(ENV_STATIC_DIR, str(ROOT_DIR / 'static'))
 TEMPLATES_DIR = str(ROOT_DIR / 'templates')
-STORAGE_DIR = os.getenv(ENV_STORAGE_DIR, str(ROOT_DIR / 'data'))
+STORAGE_DIR = os.getenv(ENV_STORAGE_DIR, str(ROOT_DIR))
 
 # Get values from environment variables with defaults
 PORT = int(os.getenv(ENV_PORT, DEFAULT_PORT))
@@ -53,7 +57,7 @@ ENABLE_FORK_SYNC = os.getenv(ENV_ENABLE_FORK_SYNC, 'False').lower() == 'true'
 GITHUB_TOKEN = os.getenv(ENV_GITHUB_TOKEN)
 GITHUB_REPO_OWNER = os.getenv(ENV_GITHUB_REPO_OWNER)
 GITHUB_REPO_NAME = os.getenv(ENV_GITHUB_REPO_NAME)
-SYNC_TO_GITHUB = os.getenv(ENV_SYNC_TO_GITHUB, 'True').lower() == 'true'
+SYNC_TO_GITHUB = os.getenv(ENV_SYNC_TO_GITHUB, 'False').lower() == 'true'
 
 # Create necessary directories
 os.makedirs(STORAGE_DIR, exist_ok=True)
@@ -75,8 +79,7 @@ def get_config():
         'MESSAGE_VERIFICATION': MESSAGE_VERIFICATION,
         'ENABLE_FORK_SYNC': ENABLE_FORK_SYNC,
         'GITHUB_TOKEN': GITHUB_TOKEN,
-        'GITHUB_REPO_OWNER': GITHUB_REPO_OWNER,
-        'GITHUB_REPO_NAME': GITHUB_REPO_NAME,
+        'GITHUB_REPO': os.getenv('GITHUB_REPO'),
         'SYNC_TO_GITHUB': SYNC_TO_GITHUB,
         'data_dir': STORAGE_DIR,  # alias for backward compatibility
     }

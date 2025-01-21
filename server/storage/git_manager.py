@@ -19,6 +19,22 @@ import base64
 
 # Create a dedicated logger for git operations
 logger = logging.getLogger('git')
+logger.setLevel(logging.DEBUG)
+logger.propagate = True  # Allow messages to propagate to parent loggers
+
+# Create file handler
+log_dir = Path('logs')
+log_dir.mkdir(exist_ok=True)
+fh = logging.FileHandler('logs/git.log', mode='w')
+fh.setLevel(logging.DEBUG)
+
+# Create formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s')
+fh.setFormatter(formatter)
+
+# Add handler to logger if it doesn't already have one
+if not logger.handlers:
+    logger.addHandler(fh)
 
 class KeyManager:
     def __init__(self, private_keys_dir, public_keys_dir):
@@ -297,19 +313,30 @@ class GitManager:
 
     def _setup_git(self):
         """Initialize git repository if needed."""
-        if not (self.repo_path / '.git').exists():
-            self._run_git_command(['git', 'init'])
-            self._run_git_command(['git', 'config', 'user.email', 'bot@bookchat.local'])
-            self._run_git_command(['git', 'config', 'user.name', 'BookChat Bot'])
+        try:
+            # Check if .git directory exists
+            if not (self.repo_path / '.git').exists():
+                logger.info("Initializing git repository")
+                self._run_git_command(['init'])
             
-            # In test mode, create an initial commit to establish the main branch
-            if self.test_mode:
-                readme_path = self.repo_path / 'README.md'
-                with open(readme_path, 'w') as f:
-                    f.write('# Test Repository\nThis is a test repository for BookChat.')
-                self._run_git_command(['git', 'add', 'README.md'])
-                self._run_git_command(['git', 'commit', '-m', 'Initial commit'])
-                self._run_git_command(['git', 'branch', '-M', 'main'])
+            # Configure git for this repository
+            self._run_git_command(['config', 'user.name', 'BookChat Bot'])
+            self._run_git_command(['config', 'user.email', 'bot@bookchat.local'])
+            
+            # Check if remote exists
+            result = subprocess.run(['git', 'remote', '-v'], cwd=str(self.repo_path), capture_output=True, text=True)
+            if 'origin' not in result.stdout:
+                # Add remote
+                remote_url = f'https://{self.github_token}@github.com/{self.repo_name}.git'
+                self._run_git_command(['remote', 'add', 'origin', remote_url])
+            
+            # Pull latest changes
+            self.pull_from_github()
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error setting up git: {e}")
+            return False
 
     def _run_git_command(self, command, check=True):
         """Run a git command in the repository directory.
@@ -322,17 +349,21 @@ class GitManager:
             CompletedProcess instance
         """
         try:
-            logger.debug(f"Running git command: {' '.join(command)}")
+            # Remove 'git' if it's the first command part since we're already running git
+            if command[0] == 'git':
+                command = command[1:]
+                
+            logger.debug(f"Running git command: git {' '.join(command)}")
             logger.debug(f"Working directory: {str(self.repo_path)}")
 
             result = subprocess.run(
-                command,
-                cwd=str(self.repo_path),  # Convert Path to string
+                ['git'] + command,  # Properly construct git command
+                cwd=str(self.repo_path),
                 env=os.environ.copy(),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                check=check and not self.test_mode  # Don't raise errors in test mode
+                check=check and not self.test_mode
             )
 
             if result.stdout:
@@ -341,18 +372,18 @@ class GitManager:
                 logger.debug(f"Command stderr: {result.stderr}")
 
             if result.returncode != 0:
-                logger.error(f"Git command failed: {' '.join(command)}")
+                logger.error(f"Git command failed: git {' '.join(command)}")
                 logger.error(f"Return code: {result.returncode}")
                 logger.error(f"Stderr: {result.stderr}")
                 if not self.test_mode and check:
                     raise subprocess.CalledProcessError(
-                        result.returncode, command, result.stdout, result.stderr
+                        result.returncode, ['git'] + command, result.stdout, result.stderr
                     )
             return result
         except subprocess.CalledProcessError as e:
             if not self.test_mode and check:
                 raise
-            logger.error(f"Git command failed: {' '.join(command)}")
+            logger.error(f"Git command failed: git {' '.join(command)}")
             logger.error(f"Exception: {str(e)}")
             return e
 
@@ -363,26 +394,28 @@ class GitManager:
             return
         
         try:
-            # Ensure filepath is a Path object
-            filepath = Path(filepath) if not isinstance(filepath, Path) else filepath
+            # Ensure filepath is a Path object and is absolute
+            filepath = Path(filepath).resolve() if not isinstance(filepath, Path) else filepath.resolve()
+            logger.debug(f"Syncing file: {filepath} (absolute path)")
             
             # Check if the file exists before trying to sync
             if not filepath.exists():
                 logger.warning(f"Warning: File {filepath} does not exist, skipping GitHub sync")
                 return
             
+            # Get path relative to repo root
+            try:
+                relative_path = filepath.relative_to(self.repo_path.resolve())
+                logger.debug(f"Relative path to repo root: {relative_path}")
+            except ValueError as e:
+                logger.error(f"File {filepath} is not in repository {self.repo_path}")
+                return
+            
             # Stage the file
-            relative_path = filepath.relative_to(self.repo_path)
-            self._run_git_command(['git', 'add', str(relative_path)])
+            self._run_git_command(['add', str(relative_path)])
             
             # Check if there are any changes to commit
-            status = subprocess.run(
-                ['git', 'status', '--porcelain', str(relative_path)],
-                cwd=str(self.repo_path),
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            status = self._run_git_command(['status', '--porcelain', str(relative_path)])
             
             if not status.stdout.strip():
                 logger.debug(f"No changes to commit for {relative_path}")
@@ -391,15 +424,15 @@ class GitManager:
             # Commit the change
             if commit_message is None:
                 commit_message = f'Add message from {author}'
-            self._run_git_command(['git', 'commit', '-m', commit_message])
+            self._run_git_command(['commit', '-m', commit_message])
             
             # Push to GitHub
-            self._run_git_command(['git', 'push', 'origin', 'main'])
+            self._run_git_command(['push', 'origin', 'main'])
             logger.info(f"Successfully synced {relative_path} to GitHub")
             
-        except subprocess.CalledProcessError as e:
+        except Exception as e:
             logger.error(f"Error syncing to GitHub: {e}")
-            raise  # Re-raise the error since GitHub sync is required
+            raise
 
     def sync_forks(self):
         """Sync with all forks listed in forks_list.txt."""
@@ -438,7 +471,7 @@ class GitManager:
             self.sync_forks()
             
             # Then pull from main repo
-            self._run_git_command(['git', 'fetch', 'origin', 'main'])
+            self._run_git_command(['fetch', 'origin', 'main'])
             
             # Check if we're behind origin/main
             status = subprocess.run(
@@ -450,7 +483,7 @@ class GitManager:
             )
             
             if status.stdout.strip() != '0':
-                self._run_git_command(['git', 'pull', '--rebase', 'origin', 'main'])
+                self._run_git_command(['pull', '--rebase', 'origin', 'main'])
                 
                 # Update last pull time
                 self.last_pull_time = current_time
@@ -574,9 +607,22 @@ class GitManager:
 
     def add_and_commit_file(self, filepath: str, commit_msg: str, author: str = "BookChat Bot"):
         """Add and commit a specific file."""
-        self._run_git_command(['git', 'add', filepath])
-        self._run_git_command(['git', 'commit', '-m', commit_msg, f'--author={author} <{author}@bookchat.local>'])
-        return True
+        try:
+            # Convert to Path object and get relative path
+            filepath = Path(filepath).resolve()
+            relative_path = filepath.relative_to(self.repo_path.resolve())
+            
+            # Add the file
+            self._run_git_command(['add', str(relative_path)])
+            
+            # Commit with author info
+            self._run_git_command(['commit', '-m', commit_msg, f'--author={author} <{author}@bookchat.local>'])
+            
+            logger.info(f"Successfully committed {relative_path} with message: {commit_msg}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to add and commit file: {e}")
+            return False
 
     def push(self):
         """Push changes to remote repository."""
@@ -585,19 +631,15 @@ class GitManager:
             
         try:
             # Check if there are commits to push
-            status = subprocess.run(
-                ['git', 'status', '-sb'],
-                cwd=str(self.repo_path),
-                check=True,
-                capture_output=True,
-                text=True
-            )
+            result = self._run_git_command(['rev-list', '@{u}..HEAD'], check=False)
             
             # If nothing to push, return early
-            if 'ahead' not in status.stdout:
+            if not result.stdout.strip():
+                logger.debug("No commits to push")
                 return True
                 
-            self._run_git_command(['git', 'push', 'origin', 'main'])
+            logger.info("Pushing changes to remote")
+            self._run_git_command(['push', 'origin', 'main'])
             return True
         except subprocess.CalledProcessError as e:
             logger.error(f"Error pushing to remote: {e.stderr}")

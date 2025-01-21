@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 import os
+import logging
 
 class StorageBackend(ABC):
     """Abstract base class for storage backends."""
@@ -54,7 +55,13 @@ def init_storage(data_dir: str, use_git: bool = False) -> Union[FileStorage, Git
     Returns:
         Storage instance
     """
+    logger = logging.getLogger(__name__)
+    logger.debug(f"Initializing storage with data_dir={data_dir}, use_git={use_git}")
+    
     Path(data_dir).mkdir(parents=True, exist_ok=True)
-    if os.getenv('SYNC_TO_GITHUB', 'false').lower() == 'true':
+    if use_git:
+        logger.info("Using GitStorage for message storage")
         return GitStorage(data_dir)
-    return FileStorage(data_dir)
+    else:
+        logger.info("Using FileStorage for message storage")
+        return FileStorage(data_dir)

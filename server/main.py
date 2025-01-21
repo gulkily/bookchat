@@ -16,11 +16,12 @@ async def init_app() -> web.Application:
     
     # Load config
     config = get_config()
+    logger.debug(f"Config loaded: SYNC_TO_GITHUB={config.get('SYNC_TO_GITHUB')}, GITHUB_REPO={config.get('GITHUB_REPO')}")
     
     # Initialize storage with git if configured
     app['storage'] = init_storage(
         config['STORAGE_DIR'],
-        use_git=config.get('USE_GIT_STORAGE', False)
+        use_git=config['SYNC_TO_GITHUB']
     )
     
     # Setup routes
