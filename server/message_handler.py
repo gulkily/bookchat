@@ -32,7 +32,7 @@ class MessageHandler:
             'author': message['author'],
             'timestamp': message['timestamp']
         }
-        logger.info(f"API Response format: {response}")
+        logger.debug(f"API Response format: {response}")
         return response
     
     def _get_current_time(self):
@@ -51,7 +51,7 @@ class MessageHandler:
         if timestamp is None:
             timestamp = current_time if current_time is not None else self._get_current_time()
         
-        logger.info(f"Creating message with timestamp: {timestamp}")
+        logger.debug(f"Creating message with content: {content}, author: {author}, timestamp: {timestamp}")
             
         message = {
             'id': await self.storage.save_message({
@@ -64,7 +64,7 @@ class MessageHandler:
             'timestamp': timestamp
         }
         
-        logger.info(f"Created message object: {message}")
+        logger.debug(f"Created message object: {message}")
         return self._to_api_response(message)
 
     async def get_message(self, message_id):
@@ -108,13 +108,13 @@ class MessageHandler:
                     'error': 'Message content cannot be empty'
                 }
             
-            logger.info(f"Creating message with content: {content}, author: {author}, timestamp: {timestamp}")
+            logger.debug(f"Creating message with content: {content}, author: {author}, timestamp: {timestamp}")
             message = await self.create_message(
                 content=content,
                 author=author,
                 timestamp=timestamp
             )
-            logger.info(f"Created message: {message}")
+            logger.debug(f"Created message: {message}")
             
             return {
                 'success': True,

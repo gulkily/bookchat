@@ -19,9 +19,10 @@ from server.storage.file_storage import FileStorage
 from server.message_handler import MessageHandler
 
 # Configure logging
+log_level = logging.INFO if os.environ.get('DEBUG') == 'true' else logging.WARNING
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=log_level,
+    format='%(levelname)s %(name)s:%(filename)s:%(lineno)d %(message)s'
 )
 
 def find_available_port(start_port=8001, max_attempts=100):
@@ -170,13 +171,13 @@ class ChatRequestHandler(BaseHTTPRequestHandler):
             try:
                 # Parse JSON data
                 request_data = json.loads(request_body.decode('utf-8'))
-                logging.info(f"Received POST data: {request_data}")
+                logging.debug(f"Received POST data: {request_data}")
                 
                 # Route request based on path
                 if parsed_url.path == '/messages':
                     # Pass the parsed JSON data to the message handler
                     response = await self.message_handler.handle_post_message(request_data)
-                    logging.info(f"Handler response: {response}")
+                    logging.debug(f"Handler response: {response}")
                     self.send_json_response(response)
                 elif parsed_url.path == '/change_username':
                     # Handle username change
