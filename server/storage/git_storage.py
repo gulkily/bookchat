@@ -6,9 +6,7 @@ import logging
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 from pathlib import Path
-import uuid
 import subprocess
-import traceback
 
 from server.storage import StorageBackend
 from server.storage.git_manager import GitManager
