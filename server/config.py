@@ -43,6 +43,10 @@ ROOT_DIR = Path(__file__).parent.parent
 STATIC_DIR = os.getenv(ENV_STATIC_DIR, str(ROOT_DIR / 'static'))
 TEMPLATES_DIR = str(ROOT_DIR / 'templates')
 STORAGE_DIR = os.getenv(ENV_STORAGE_DIR, str(ROOT_DIR))
+MESSAGES_DIR = Path(STORAGE_DIR) / 'messages'
+ARCHIVES_DIR = Path(STORAGE_DIR) / 'archives'
+KEYS_DIR = Path(STORAGE_DIR) / 'keys'
+PUBLIC_KEYS_DIR = Path(STORAGE_DIR) / 'identity/public_keys'
 
 # Get values from environment variables with defaults
 PORT = int(os.getenv(ENV_PORT, DEFAULT_PORT))
@@ -63,6 +67,10 @@ SYNC_TO_GITHUB = os.getenv(ENV_SYNC_TO_GITHUB, 'False').lower() == 'true'
 os.makedirs(STORAGE_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(TEMPLATES_DIR, exist_ok=True)
+os.makedirs(MESSAGES_DIR, exist_ok=True)
+os.makedirs(ARCHIVES_DIR, exist_ok=True)
+os.makedirs(KEYS_DIR, exist_ok=True)
+os.makedirs(PUBLIC_KEYS_DIR, exist_ok=True)
 
 # Create a Path object for the project root
 PROJECT_ROOT = Path(__file__).parent.parent

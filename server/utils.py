@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, Any, Union, List, Optional
 
 from server.config import (
-    REPO_PATH,
+    STORAGE_DIR,
     MESSAGES_DIR,
     ARCHIVES_DIR,
     TEMPLATES_DIR,
@@ -34,6 +34,7 @@ def find_available_port(start_port: int = 8080, max_tries: int = 100) -> int:
 def ensure_directories() -> None:
     """Ensure all required directories exist."""
     directories = [
+        STORAGE_DIR,
         MESSAGES_DIR,
         ARCHIVES_DIR,
         TEMPLATES_DIR,
@@ -143,9 +144,11 @@ def format_size(size_in_bytes: int) -> str:
     """Format size in bytes to human readable format."""
     for unit in ['B', 'KB', 'MB', 'GB']:
         if size_in_bytes < 1024:
-            return f"{size_in_bytes:.1f}{unit}"
+            if unit == 'B':
+                return f"{int(size_in_bytes)} {unit}"
+            return f"{size_in_bytes:.1f} {unit}"
         size_in_bytes /= 1024
-    return f"{size_in_bytes:.1f}TB"
+    return f"{size_in_bytes:.1f} TB"
 
 def open_browser(port, max_attempts=3, delay=1.0):
     """Open the browser to the server URL."""
