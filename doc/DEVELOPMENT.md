@@ -139,6 +139,28 @@ class GitManager:
    python -m pytest tests/test_git_manager.py
    ```
 
+## Testing Requirements
+
+### Core Testing Principles
+1. Use actual GitHub API - no mocking
+2. Write real messages to `messages/` directory
+3. All messages must be committed and pushed immediately
+4. Messages must follow format: `YYYYMMDD_HHMMSS_username.txt`
+5. Public keys must be in `identity/public_keys/{username}.pub`
+
+### Required Environment Variables
+```bash
+GITHUB_TOKEN=your_token      # Required: valid GitHub token
+GITHUB_REPO=owner/repo       # Required: repository to use
+SYNC_TO_GITHUB=true         # Must be true for tests
+```
+
+### Message Storage Rules
+- All messages stored in project repo under `messages/`
+- Messages must be Git-tracked (not gitignored)
+- Old messages moved to `archive/` but still tracked
+- Immediate commit and push on message creation
+
 ## Debugging
 
 1. Enable debug logging:
