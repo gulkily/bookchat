@@ -87,13 +87,12 @@ def get_server_thread(port):
 def find_available_port(start_port=8001, max_attempts=100):
     """Find an available port starting from start_port."""
     for port in range(start_port, start_port + max_attempts):
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.bind(('localhost', port))
-            sock.close()
-            return port
-        except OSError:
-            continue
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            try:
+                sock.bind(('localhost', port))
+                return port
+            except OSError:
+                continue
     raise RuntimeError(f"Could not find an available port after {max_attempts} attempts")
 
 

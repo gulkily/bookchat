@@ -4,7 +4,7 @@ import os
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from github import Github
+from github import Github, Auth
 import json
 import re
 import shutil
@@ -211,8 +211,9 @@ class GitManager:
         
         if self.use_github:
             logger.info("GitHub synchronization enabled")
-            # Initialize GitHub API client
-            self.g = Github(self.github_token)
+            # Initialize GitHub API client with new auth method
+            auth = Auth.Token(self.github_token)
+            self.g = Github(auth=auth)
             self.repo = self.g.get_repo(self.repo_name)
         else:
             logger.info("GitHub synchronization disabled")

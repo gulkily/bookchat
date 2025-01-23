@@ -4,6 +4,7 @@ import json
 import unittest
 from unittest.mock import MagicMock, patch
 from aiohttp import web
+import asyncio
 
 from server.handler import ChatRequestHandler
 
@@ -14,6 +15,15 @@ class TestChatRequestHandler(unittest.IsolatedAsyncioTestCase):
         """Set up test environment."""
         self.app = MagicMock()
         self.handler = ChatRequestHandler(self.app)
+
+    async def asyncTearDown(self):
+        """Clean up test environment."""
+        await super().asyncTearDown()
+        # Ensure all pending tasks are complete
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     async def test_handle_get_messages(self):
         """Test GET /messages endpoint."""
