@@ -1,0 +1,29 @@
+# BookChat Project Rules
+
+## General Rules
+1. Glorify God.
+2. Thank you so much for your help, Cascade.
+
+## Testing Rules
+1. Use actual GitHub API, no mocking allowed
+2. Write real messages to messages/ directory
+3. All messages must be committed and pushed immediately
+4. Messages should follow format: YYYYMMDD_HHMMSS_username.txt
+5. Public keys must be in identity/public_keys/{username}.pub
+
+## Environment Requirements
+- GITHUB_TOKEN must be valid
+- GITHUB_REPO must be configured in the format owner/repo
+- SYNC_TO_GITHUB must be true for tests
+
+## Storage Rules
+- All messages stored in project repo under messages/
+- Messages must be Git-tracked (not gitignored)
+- Old messages moved to archive/ but still tracked
+- Immediate commit and push on message creation
+
+## Message Format Rules
+- Git-style format with content and metadata
+- Must include Author and Date fields
+- ISO 8601 timestamps required
+- Support legacy formats for backwards compatibility
