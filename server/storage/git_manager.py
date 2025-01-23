@@ -16,6 +16,7 @@ import uuid
 from typing import Dict, List, Optional, Union
 import tempfile
 import base64
+import asyncio
 
 # Create a dedicated logger for git operations
 logger = logging.getLogger('git')
@@ -36,138 +37,6 @@ fh.setFormatter(formatter)
 if not logger.handlers:
     logger.addHandler(fh)
 
-class KeyManager:
-    def __init__(self, private_keys_dir, public_keys_dir):
-        self.private_keys_dir = Path(private_keys_dir)
-        self.public_keys_dir = Path(public_keys_dir)
-        self.private_keys_dir.mkdir(parents=True, exist_ok=True)
-        self.public_keys_dir.mkdir(parents=True, exist_ok=True)
-        self.private_key_path = self.private_keys_dir / 'local.pem'
-        self.public_key_path = self.public_keys_dir / 'local.pub'
-        
-        # Generate key pair if it doesn't exist
-        if not self.private_key_path.exists():
-            subprocess.run(['openssl', 'genrsa', '-out', str(self.private_key_path), '2048'], check=True)
-            subprocess.run(['openssl', 'rsa', '-pubout', '-in', str(self.private_key_path), '-out', str(self.public_key_path)], check=True)
-
-    def sign_message(self, message: str) -> str:
-        """Sign a message using a private key."""
-        try:
-            # Create temporary file for the message
-            with tempfile.NamedTemporaryFile(mode='w', delete=False) as msg_file:
-                msg_file.write(message)
-                msg_file_path = msg_file.name
-
-            # Sign the message
-            result = subprocess.run(
-                [
-                    'openssl', 'dgst',
-                    '-sha256',
-                    '-sign', str(self.private_key_path),
-                    msg_file_path
-                ],
-                capture_output=True,
-                check=True
-            )
-
-            # Base64 encode the signature
-            signature = base64.b64encode(result.stdout).decode('utf-8')
-            return signature
-
-        except Exception as e:
-            logger.error(f"Failed to sign message: {e}")
-            return None
-        finally:
-            try:
-                os.unlink(msg_file_path)
-            except:
-                pass
-
-    def verify_signature(self, message: str, signature_b64: str, public_key_pem: str) -> bool:
-        """Verify a message signature using a public key."""
-        try:
-            # Create temporary files for message, signature, and public key
-            with tempfile.NamedTemporaryFile(mode='w', delete=False) as msg_file:
-                msg_file.write(message)
-                msg_file_path = msg_file.name
-
-            with tempfile.NamedTemporaryFile(mode='wb', delete=False) as sig_file:
-                sig_file.write(base64.b64decode(signature_b64))
-                sig_file_path = sig_file.name
-
-            with tempfile.NamedTemporaryFile(mode='w', delete=False) as key_file:
-                key_file.write(public_key_pem)
-                key_file_path = key_file.name
-
-            # Verify the signature
-            result = subprocess.run(
-                [
-                    'openssl', 'dgst',
-                    '-sha256',
-                    '-verify', key_file_path,
-                    '-signature', sig_file_path,
-                    msg_file_path
-                ],
-                capture_output=True,
-                text=True,
-                check=False
-            )
-
-            return result.returncode == 0 and "Verified OK" in result.stdout
-
-        except Exception as e:
-            logger.error(f"Signature verification failed: {e}")
-            return False
-        finally:
-            try:
-                os.unlink(msg_file_path)
-                os.unlink(sig_file_path)
-                os.unlink(key_file_path)
-            except:
-                pass
-
-    def export_public_key(self, filepath):
-        # Export public key to file
-        subprocess.run(['cp', str(self.public_key_path), str(filepath)], check=True)
-
-    def generate_keypair(self, username):
-        """Generate key pair for the user"""
-        # Generate private key
-        private_key = rsa.generate_private_key(
-            public_exponent=65537,
-            key_size=2048
-        )
-        public_key = private_key.public_key()
-
-        # Save private key
-        private_key_path = self.private_keys_dir / f'{username}.pem'
-        private_pem = private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        )
-        private_key_path.write_bytes(private_pem)
-
-        # Save public key
-        public_key_path = self.public_keys_dir / f'{username}.pub'
-        public_pem = public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
-        public_key_path.write_bytes(public_pem)
-
-    def get_private_key_path(self, username):
-        # Get private key path for the user
-        return self.private_keys_dir / f'{username}.pem'
-
-    def get_public_key(self, username):
-        # Get public key for the user
-        public_key_path = self.public_keys_dir / f'{username}.pub'
-        if public_key_path.exists():
-            return public_key_path.read_text()
-        else:
-            return None
-
 class GitManager:
     """Manages git operations for message storage."""
 
@@ -182,19 +51,12 @@ class GitManager:
         self.test_mode = test_mode
         self.repo_name = os.getenv('GITHUB_REPO') if not test_mode else None
         self.messages_dir = self.repo_path / 'messages'
-        self.keys_dir = self.repo_path / 'keys'
         
         # Create necessary directories
         self.repo_path.mkdir(exist_ok=True)
         self.messages_dir.mkdir(exist_ok=True)
-        self.keys_dir.mkdir(exist_ok=True)
         
         self.github_token = os.environ.get('GITHUB_TOKEN')
-        
-        # Initialize key manager with both private and public key directories
-        private_keys_dir = os.environ.get('KEYS_DIR', str(self.repo_path / 'keys'))
-        public_keys_dir = os.environ.get('PUBLIC_KEYS_DIR', str(self.repo_path / 'identity/public_keys'))
-        self.key_manager = KeyManager(private_keys_dir, public_keys_dir)
         
         # GitHub sync is required as per spec
         self.use_github = not test_mode and os.environ.get('SYNC_TO_GITHUB') == 'true'
@@ -220,13 +82,6 @@ class GitManager:
         
         # Set up messages directory path
         self.messages_dir = self.repo_path / 'messages'
-        self.keys_dir = self.repo_path / 'identity/public_keys'
-        self._ensure_directories()
-        
-        # Export public key for anonymous users
-        public_keys_dir = self.repo_path / 'identity/public_keys'
-        public_keys_dir.mkdir(parents=True, exist_ok=True)
-        self.key_manager.export_public_key(public_keys_dir / 'anonymous.pub')
         
         # Initialize git if needed
         if not (self.repo_path / '.git').exists():
@@ -246,16 +101,11 @@ class GitManager:
                 # Initial push
                 self._run_git_command(['push', '-u', 'origin', 'main'])
         
-        # Sync public key if GitHub is enabled
-        if self.use_github:
-            self.sync_changes_to_github(public_keys_dir / 'anonymous.pub', "System")
-
     async def init(self):
         """Initialize the git repository."""
         try:
             # Create directories if they don't exist
             self.messages_dir.mkdir(parents=True, exist_ok=True)
-            self.keys_dir.mkdir(parents=True, exist_ok=True)
 
             # Initialize git repo if not already initialized
             if not (self.repo_path / '.git').exists():
@@ -300,8 +150,6 @@ class GitManager:
                     
                     # Create necessary directories
                     os.makedirs(os.path.join(str(self.repo_path), 'messages'), exist_ok=True)
-                    os.makedirs(os.path.join(str(self.repo_path), 'identity/public_keys'), exist_ok=True)
-                    os.makedirs(os.path.join(str(self.repo_path), 'keys'), exist_ok=True)
                     
                     # Create initial README
                     readme_path = os.path.join(str(self.repo_path), 'README.md')
@@ -328,7 +176,6 @@ class GitManager:
     def _ensure_directories(self):
         """Ensure required directories exist."""
         self.messages_dir.mkdir(parents=True, exist_ok=True)
-        self.keys_dir.mkdir(parents=True, exist_ok=True)
 
     def _setup_git(self):
         """Initialize git repository if needed."""
