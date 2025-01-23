@@ -10,7 +10,6 @@ import subprocess
 
 from server.storage import StorageBackend
 from server.storage.git_manager import GitManager
-from server.key_manager import KeyManager  # Import KeyManager
 
 # Get logger for this module
 logger = logging.getLogger(__name__)
@@ -29,11 +28,6 @@ class GitStorage(StorageBackend):
         self.messages_dir = self.repo_path / 'messages'
         self.git_manager = GitManager(str(repo_path))
         
-        # Initialize key manager with the same key directories as git manager
-        private_keys_dir = os.environ.get('KEYS_DIR', str(self.repo_path / 'keys'))
-        public_keys_dir = os.environ.get('PUBLIC_KEYS_DIR', str(self.repo_path / 'identity/public_keys'))
-        self.key_manager = KeyManager(private_keys_dir, public_keys_dir)
-
         logger.debug(f"Messages directory: {self.messages_dir}")
         
         # Check if messages directory exists
@@ -68,15 +62,6 @@ class GitStorage(StorageBackend):
             
             # Initialize git repository
             self.git_manager._setup_git()
-            
-            # Export public key for anonymous users
-            public_keys_dir = self.repo_path / 'identity/public_keys'
-            public_keys_dir.mkdir(parents=True, exist_ok=True)
-            self.key_manager.export_public_key(public_keys_dir / 'anonymous.pub')
-            
-            # Sync public key if GitHub is enabled
-            if os.environ.get('SYNC_TO_GITHUB', 'false').lower() == 'true':
-                self.git_manager.sync_changes_to_github(public_keys_dir / 'anonymous.pub', "System")
             
             return True
         except Exception as e:
