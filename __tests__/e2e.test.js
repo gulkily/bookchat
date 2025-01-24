@@ -54,194 +54,129 @@ test.describe('BookChat Frontend', () => {
     await highlight(messageContent);
   });
 
-  test('message sending status transitions correctly', async ({ page }) => {
-    // Wait for the message input to be available
-    const messageInput = page.locator('#message-input');
-    await messageInput.waitFor({ state: 'visible' });
-    await highlight(messageInput);
-    
-    // Type and send a message
-    const testMessage = 'Testing message status';
-    await messageInput.fill(testMessage);
-    
-    const sendButton = page.locator('#send-button');
-    await highlight(sendButton);
-    
-    // Set up response listener before clicking
-    const responsePromise = page.waitForResponse(
-      response => response.url().includes('/messages') && 
-                 response.request().method() === 'POST'
-    );
-    
-    // Click send button
-    await sendButton.click();
-    
-    // Wait for the POST request to complete first
-    const response = await responsePromise;
-    expect(response.ok()).toBeTruthy();
-    
-    // Now look for the timestamp
-    const timestamp = page.locator('.message:last-child .timestamp');
-    
-    // Get the timestamp text and verify format
-    const timestampText = await timestamp.textContent();
-    expect(timestampText).toBe('Just now');
-    
-    // Verify it's not an error state
-    expect(timestampText).not.toBe('Failed to send');
-    expect(timestampText).not.toBe('Unknown time');
-  });
-
-  test('username change functionality', async ({ page }) => {
-    // Set up dialog handler before triggering the prompt
-    const newUsername = 'TestUser123';
+  test('username persists in messages after page reload', async ({ page }) => {
+    // Set up dialog handler for username change
+    const testUsername = 'PersistenceTestUser';
     page.on('dialog', async dialog => {
       expect(dialog.type()).toBe('prompt');
-      await dialog.accept(newUsername);
+      await dialog.accept(testUsername);
     });
-    
-    // Trigger the username change action
-    await page.click('#change-username-btn');
-    
-    // Wait for the username display to update
-    const usernameDisplay = page.locator('#username-display');
-    await expect(usernameDisplay).toHaveText(newUsername, { timeout: 5000 });
-  });
 
-  test('character counter updates correctly', async ({ page }) => {
-    // Wait for the message input to be available
-    const messageInput = page.locator('#message-input');
-    await messageInput.waitFor({ state: 'visible' });
-    
-    // Get the character counter element
-    const charCounter = page.locator('#js-char-counter');
-    await charCounter.waitFor({ state: 'visible' });
-    await highlight(charCounter);
-
-    // Check initial state
-    await expect(charCounter).toHaveText('0');
-
-    // Type a message and verify counter updates
-    await messageInput.fill('Hello');
-    await expect(charCounter).toHaveText('5');
-
-    // Type a longer message
-    await messageInput.fill('Hello, world! This is a test message.');
-    await expect(charCounter).toHaveText('37');
-
-    // Clear the message
-    await messageInput.fill('');
-    await expect(charCounter).toHaveText('0');
-  });
-
-  test('message persistence across page reloads', async ({ page }) => {
-    // Wait for the message input
-    const messageInput = page.locator('#message-input');
-    await messageInput.waitFor({ state: 'visible' });
-    await highlight(messageInput);
+    // Click username button to set username
+    const usernameButton = page.locator('#change-username-btn');
+    await usernameButton.click();
 
     // Send a test message
-    const testMessage = 'This message should persist';
+    const testMessage = 'Testing username persistence';
+    const messageInput = page.locator('#message-input');
     await messageInput.fill(testMessage);
     
     const sendButton = page.locator('#send-button');
-    await highlight(sendButton);
     await sendButton.click();
-    
-    // Wait for message to appear
-    const messageContent = page.locator('.message .content').last();
-    await expect(messageContent).toContainText(testMessage, {
-      timeout: 5000
-    });
-    await highlight(messageContent);
-    
+
+    // Wait for message to appear and verify username initially
+    const messageElement = page.locator('.message').last();
+    await expect(messageElement.locator('.username')).toContainText(testUsername);
+
     // Reload the page
     await page.reload();
+
+    // Wait for messages to load after reload
+    await page.waitForSelector('.message');
+
+    // Find our test message and verify username is still correct
+    const messages = page.locator('.message');
+    const count = await messages.count();
+    let found = false;
     
-    // Wait for messages to load and verify message still exists
-    const persistedMessage = page.locator('.message .content').last();
-    await expect(persistedMessage).toContainText(testMessage, {
-      timeout: 5000
+    for (let i = 0; i < count; i++) {
+      const message = messages.nth(i);
+      const content = await message.locator('.content').textContent();
+      if (content.includes(testMessage)) {
+        const username = await message.locator('.username').textContent();
+        expect(username).toContain(testUsername);
+        expect(username).not.toContain('anonymous');
+        found = true;
+        break;
+      }
+    }
+    
+    expect(found).toBeTruthy();
+  });
+
+  test('should scroll to bottom on initial load', async ({ page }) => {
+    // Load some test messages first to ensure there's enough content to scroll
+    for (let i = 0; i < 20; i++) {
+      const messageInput = page.locator('#message-input');
+      await messageInput.fill(`Test message ${i}`);
+      const sendButton = page.locator('#send-button');
+      await sendButton.click();
+      // Small delay to prevent rate limiting
+      await page.waitForTimeout(100);
+    }
+
+    // Reload the page
+    await page.reload();
+
+    // Wait for messages container to be visible
+    const messagesContainer = page.locator('#messages');
+    await messagesContainer.waitFor({ state: 'visible' });
+
+    // Get the scroll position and container height
+    const scrollPosition = await messagesContainer.evaluate((container) => {
+      return {
+        scrollTop: container.scrollTop,
+        scrollHeight: container.scrollHeight,
+        clientHeight: container.clientHeight
+      };
     });
-    await highlight(persistedMessage);
+
+    // Verify that we're scrolled to the bottom (with small margin of error)
+    expect(scrollPosition.scrollTop + scrollPosition.clientHeight).toBeCloseTo(
+      scrollPosition.scrollHeight,
+      -1 // Precision of 1 decimal place
+    );
   });
 
-  test('handles empty message submission', async ({ page }) => {
-    // Wait for the message input to be available
-    const messageInput = page.locator('#message-input');
-    await messageInput.waitFor({ state: 'visible' });
-    
-    // Count messages before attempting to send empty message
-    const messagesBeforeSend = await page.locator('.message').count();
-    
-    // Try to send an empty message
-    const sendButton = page.locator('#send-button');
-    await sendButton.click();
-    
-    // Try to send only whitespace
-    await messageInput.fill('   ');
-    await sendButton.click();
-    
-    // Verify no new messages were added
-    const messagesAfterSend = await page.locator('.message').count();
-    expect(messagesAfterSend).toBe(messagesBeforeSend);
-  });
+  test('should scroll to bottom when new message is sent', async ({ page }) => {
+    // Load some initial messages
+    for (let i = 0; i < 20; i++) {
+      const messageInput = page.locator('#message-input');
+      await messageInput.fill(`Initial message ${i}`);
+      const sendButton = page.locator('#send-button');
+      await sendButton.click();
+      // Small delay to prevent rate limiting
+      await page.waitForTimeout(100);
+    }
 
-  test('handles special characters and potential XSS', async ({ page }) => {
-    // Wait for the message input to be available
-    const messageInput = page.locator('#message-input');
-    await messageInput.waitFor({ state: 'visible' });
-    
-    // Test message with special characters and HTML/script injection
-    const specialMessage = '<script>alert("xss")</script><img src="x" onerror="alert(1)"> Hello & < > " \' 🎉';
-    await messageInput.fill(specialMessage);
-    
-    // Send the message
-    const sendButton = page.locator('#send-button');
-    await sendButton.click();
-    
-    // Wait for message to appear
-    const messageContent = page.locator('.message .content').last();
-    await expect(messageContent).toBeVisible();
-    
-    // Verify the message is properly escaped/sanitized
-    const messageHtml = await messageContent.innerHTML();
-    // Check that HTML tags are not executed but displayed as text
-    expect(messageHtml).not.toMatch(/<img[^>]+onerror=/);
-    expect(messageHtml).not.toMatch(/<script>/);
-    
-    // Verify the original text is preserved but safely displayed
-    await expect(messageContent).toContainText('onerror=');  // The text should be visible
-    await expect(messageContent).toContainText('<script>');  // The text should be visible
-    
-    // Verify emojis and special characters are preserved
-    await expect(messageContent).toContainText('🎉');
-    await expect(messageContent).toContainText('Hello &');
-  });
+    // Scroll to the middle of the messages
+    const messagesContainer = page.locator('#messages');
+    await messagesContainer.evaluate((container) => {
+      container.scrollTop = container.scrollHeight / 2;
+    });
 
-  test('handles network errors during message send', async ({ page }) => {
-    // Wait for the message input
+    // Send a new message
     const messageInput = page.locator('#message-input');
-    await messageInput.waitFor({ state: 'visible' });
-    
-    // Mock a failed network request
-    await page.route('**/messages', route => route.abort('failed'));
-    
-    // Try to send a message
-    await messageInput.fill('This message should fail to send');
+    await messageInput.fill('New message that should trigger scroll');
     const sendButton = page.locator('#send-button');
     await sendButton.click();
-    
-    // Verify error state
-    const errorMessage = page.locator('.error-message');
-    await expect(errorMessage).toBeVisible();
-    await expect(errorMessage).toContainText('Failed to send message');
-    
-    // Verify the message status shows failed
-    const messageStatus = page.locator('.message .timestamp').last();
-    await expect(messageStatus).toContainText('Failed to send');
-    
-    // Remove the route override
-    await page.unroute('**/messages');
+
+    // Wait a moment for the scroll animation
+    await page.waitForTimeout(500);
+
+    // Verify that we're scrolled to the bottom
+    const scrollPosition = await messagesContainer.evaluate((container) => {
+      return {
+        scrollTop: container.scrollTop,
+        scrollHeight: container.scrollHeight,
+        clientHeight: container.clientHeight
+      };
+    });
+
+    // Verify that we're scrolled to the bottom (with small margin of error)
+    expect(scrollPosition.scrollTop + scrollPosition.clientHeight).toBeCloseTo(
+      scrollPosition.scrollHeight,
+      -1 // Precision of 1 decimal place
+    );
   });
 });

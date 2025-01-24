@@ -63,5 +63,31 @@ class TestMessageStorage(unittest.IsolatedAsyncioTestCase):
             self.assertIn(test_author, content)
             self.assertIn(message['timestamp'], content)
 
+    async def test_message_username_storage(self):
+        """Test that message username is correctly stored in the message file."""
+        # Test with different usernames to ensure proper storage
+        test_usernames = ["regular_user", "User With Spaces", "user123", "特殊文字"]
+        
+        for username in test_usernames:
+            # Create a message with the test username
+            message = await self.handler.create_message(
+                content="Test content",
+                author=username
+            )
+            
+            # Get the message file path
+            message_path = Path(self.test_storage_dir) / 'messages' / f"{message['id']}.txt"
+            
+            # Verify the file exists
+            self.assertTrue(message_path.exists())
+            
+            # Read the file contents and verify the username is stored correctly
+            with open(message_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                self.assertIn(username, content)
+                
+            # Clean up the test file
+            message_path.unlink()
+
 if __name__ == '__main__':
     unittest.main()
