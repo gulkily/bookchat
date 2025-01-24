@@ -33,6 +33,11 @@ Welcome to the BookChat documentation! This index will help you navigate through
    - Development considerations
    - Future improvements
 
+7. [FUTURE_OPTIONS.md](FUTURE_OPTIONS.md)
+   - Potential future enhancements
+   - Advanced feature proposals
+   - Security and scalability options
+
 ## Getting Started
 
 For new users and developers:
@@ -45,5 +50,6 @@ For new users and developers:
 The BookChat project welcomes contributions! Before contributing, please review:
 1. The technical specifications in [BOOKCHAT_SPEC.md](BOOKCHAT_SPEC.md)
 2. Current development considerations in [TO_THINK_ABOUT.md](TO_THINK_ABOUT.md)
+3. Future possibilities in [FUTURE_OPTIONS.md](FUTURE_OPTIONS.md)
 
 *Last updated: 2025-01-13*

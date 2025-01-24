@@ -13,14 +13,13 @@ This guide provides information for developers who want to contribute to or exte
 2. Set up development environment:
    ```bash
    python -m venv venv
-   source venv/bin/activate
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
    pip install -r requirements.txt
-   pip install -r requirements-dev.txt  # Development dependencies
    ```
 
-3. Configure pre-commit hooks:
+3. Install Node.js dependencies for frontend testing:
    ```bash
-   pre-commit install
+   npm install
    ```
 
 ## Project Structure
@@ -31,27 +30,23 @@ bookchat/
 │   ├── storage/
 │   │   ├── __init__.py
 │   │   ├── file_storage.py
-│   │   ├── git_storage.py
-│   │   └── git_manager.py
+│   │   └── git_storage.py
 │   ├── __init__.py
-│   ├── config.py
-│   ├── handler.py
-│   ├── handler_methods.py
-│   ├── logger.py
-│   ├── main.py
 │   ├── message_handler.py
 │   └── utils.py
-└── tests/
-    ├── __init__.py
-    ├── test_config.py
-    ├── test_file_storage.py
-    ├── test_git_storage.py
-    ├── test_handler_methods.py
-    └── test_message_handler.py
-└── static/           # Frontend assets
+├── static/           # Frontend assets
 │   ├── css/
-│   └── js/
-└── templates/        # HTML templates
+│   ├── js/
+│   └── index.html
+├── __tests__/        # Frontend tests
+│   ├── e2e.test.js
+│   └── test_messages.js
+├── tests/            # Backend tests
+│   ├── __init__.py
+│   ├── test_server_integration.py
+│   └── test_message_handler.py
+├── server.py         # Main server implementation
+└── requirements.txt  # Python dependencies
 ```
 
 ## Core Components
@@ -122,65 +117,46 @@ class GitManager:
 
 ## Testing
 
-1. Run unit tests:
+1. Run backend tests:
    ```bash
-   python -m pytest tests/
+   pytest
    ```
 
-2. Run with coverage:
+2. Run frontend unit tests:
    ```bash
-   coverage run -m pytest tests/
-   coverage report
+   npm run test:unit
    ```
 
-3. Test specific components:
+3. Run end-to-end tests:
    ```bash
-   python -m pytest tests/test_storage.py
-   python -m pytest tests/test_git_manager.py
+   npm run test:e2e
    ```
 
-## Testing Requirements
+## Development Server
 
-### Core Testing Principles
-1. Use actual GitHub API - no mocking
-2. Write real messages to `messages/` directory
-3. All messages must be committed and pushed immediately
-4. Messages must follow format: `YYYYMMDD_HHMMSS_username.txt`
-5. Public keys must be in `identity/public_keys/{username}.pub`
-
-### Required Environment Variables
+Start the development server:
 ```bash
-GITHUB_TOKEN=your_token      # Required: valid GitHub token
-GITHUB_REPO=owner/repo       # Required: repository to use
-SYNC_TO_GITHUB=true         # Must be true for tests
+python server.py
 ```
 
-### Message Storage Rules
-- All messages stored in project repo under `messages/`
-- Messages must be Git-tracked (not gitignored)
-- Old messages moved to `archive/` but still tracked
-- Immediate commit and push on message creation
+The server will automatically:
+1. Find an available port (starting from 8001)
+2. Open your default web browser
+3. Support hot-reloading for development
 
-## Debugging
+## Adding New Features
 
-1. Enable debug logging:
-   ```bash
-   export BOOKCHAT_DEBUG=true
-   python server.py
-   ```
+When adding new features:
+1. Add appropriate tests in `tests/` or `__tests__/`
+2. Update the frontend in `static/js/main.js`
+3. Update documentation
+4. Run the full test suite before submitting PR
 
-2. Log locations:
-   - `logs/debug.log`: All messages
-   - `logs/info.log`: INFO and above
-   - `logs/error.log`: ERROR and above
+## Environment Variables
 
-## Code Style
-
-1. Follow PEP 8 guidelines
-2. Use type hints for function arguments and returns
-3. Document all public functions and classes
-4. Keep functions focused and small
-5. Write meaningful commit messages
+- `DEBUG`: Set to 'true' for detailed logging
+- `PORT`: Override default port selection
+- Other variables as specified in `.env.template`
 
 ## Pull Request Process
 
@@ -253,4 +229,4 @@ SYNC_TO_GITHUB=true         # Must be true for tests
    - Validate message format
    - Check file permissions
 
-*Last updated: 2025-01-13*
+*Last updated: 2025-01-23*

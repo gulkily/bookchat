@@ -5,9 +5,8 @@ This guide covers how to deploy and configure BookChat in various environments.
 ## Prerequisites
 
 - Python 3.7 or higher
+- Node.js 16 or higher (for testing)
 - Git
-- OpenSSL
-- A GitHub account (optional, for message synchronization)
 
 ## Installation
 
@@ -28,6 +27,11 @@ This guide covers how to deploy and configure BookChat in various environments.
    pip install -r requirements.txt
    ```
 
+4. (Optional) Install Node.js dependencies for testing:
+   ```bash
+   npm install
+   ```
+
 ## Configuration
 
 1. Copy the environment template:
@@ -38,41 +42,13 @@ This guide covers how to deploy and configure BookChat in various environments.
 2. Configure the following environment variables in `.env`:
 
 ### Required Settings
-- `PORT`: Server port (default: 8000)
+- `DEBUG`: Set to 'true' for detailed logging (default: false)
+- `PORT`: Server port (optional, will auto-detect if not set)
 
-### GitHub Integration (Optional)
-- `SYNC_TO_GITHUB`: Enable GitHub synchronization (true/false)
-- `GITHUB_TOKEN`: Your GitHub personal access token
+### Optional Settings
+- `GITHUB_TOKEN`: GitHub personal access token for syncing
 - `GITHUB_REPO`: Repository name (format: username/repository)
-
-### Security Settings
-- `KEYS_DIR`: Directory for storing private keys (default: repo/keys)
-- `SIGN_MESSAGES`: Enable message signing (true/false)
 - `MESSAGE_VERIFICATION`: Enable message verification (true/false)
-
-### Logging Configuration
-- `BOOKCHAT_DEBUG`: Enable debug logging (set any value to enable)
-
-### Archive Settings
-- `ARCHIVE_INTERVAL_SECONDS`: Interval between archive checks (default: 3600)
-- `ARCHIVE_DAYS_THRESHOLD`: Days before messages are archived (default: 30)
-- `ARCHIVE_MAX_SIZE_MB`: Maximum archive size in MB (default: 100)
-
-## Directory Structure
-
-```
-bookchat/
-├── keys/                 # Private keys storage
-├── identity/
-│   └── public_keys/     # Public keys storage
-├── messages/            # Active messages
-├── archive/            # Archived messages
-├── logs/               # Application logs
-│   ├── debug.log
-│   ├── info.log
-│   └── error.log
-└── static/             # Static web assets
-```
 
 ## Running the Server
 
@@ -81,68 +57,77 @@ bookchat/
    python server.py
    ```
 
+   The server will:
+   - Find an available port (starting from 8001)
+   - Open your default web browser
+   - Create necessary directories if they don't exist
+
 2. Access the application:
-   - Open a web browser and navigate to `http://localhost:8000`
-   - The server will automatically find an available port if 8000 is in use
+   - Open `http://localhost:<PORT>` in your browser
+   - The port will be displayed in the console output
 
-## Logging
+## Production Deployment
 
-BookChat uses a hierarchical logging system:
+For production deployment, consider:
 
-1. Console Output:
-   - Default: WARNING and above
-   - Debug mode: All levels when BOOKCHAT_DEBUG is set
+1. Using a process manager (e.g., supervisord)
+2. Setting up a reverse proxy (nginx/Apache)
+3. Implementing proper logging
+4. Setting up SSL/TLS
 
-2. Log Files:
-   - `debug.log`: All messages (DEBUG and above)
-   - `info.log`: INFO and above
-   - `error.log`: ERROR and above
+### Example Supervisor Configuration
+```ini
+[program:bookchat]
+command=/path/to/venv/bin/python server.py
+directory=/path/to/bookchat
+user=www-data
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/bookchat/err.log
+stdout_logfile=/var/log/bookchat/out.log
+environment=
+    DEBUG=false,
+    PORT=8001
+```
 
-## Security Considerations
+### Example Nginx Configuration
+```nginx
+server {
+    listen 80;
+    server_name your.domain.com;
 
-1. Key Management:
-   - Private keys are stored in `KEYS_DIR`
-   - Public keys are stored in `identity/public_keys`
-   - Keys are generated automatically if not present
-
-2. Message Signing:
-   - Enable `SIGN_MESSAGES` for message authentication
-   - Enable `MESSAGE_VERIFICATION` for signature verification
-
-3. GitHub Integration:
-   - Use a dedicated GitHub account/token
-   - Set appropriate repository permissions
-   - Consider private repository for sensitive messages
+    location / {
+        proxy_pass http://localhost:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
 
 ## Troubleshooting
 
-1. Port Conflicts:
-   - The server automatically finds an available port
-   - Check logs for the actual port being used
+1. Port in use:
+   - The server will automatically find an available port
+   - Override with `PORT` environment variable
 
-2. GitHub Sync Issues:
-   - Verify GitHub token permissions
-   - Check network connectivity
-   - Review error logs for detailed messages
+2. Browser doesn't open:
+   - Access the URL shown in console output
+   - Check if running in WSL/container environment
 
-3. Key Management Issues:
-   - Ensure proper directory permissions
-   - Check OpenSSL installation
-   - Verify key file ownership
+3. Message storage issues:
+   - Ensure write permissions in messages directory
+   - Check log file for detailed errors
 
 ## Maintenance
 
-1. Log Rotation:
-   - Logs are automatically rotated based on size
-   - Archive old logs periodically
+1. Backup strategy:
+   - Regular backups of `messages/` directory
+   - Git repository serves as version control
 
-2. Message Archiving:
-   - Messages are automatically archived based on age and size
-   - Configure archive settings in `.env`
+2. Updating:
+   ```bash
+   git pull
+   pip install -r requirements.txt
+   ```
 
-3. Backup Strategy:
-   - Regular backup of `keys/` directory
-   - Backup of `messages/` directory
-   - GitHub serves as remote backup when enabled
-
-*Last updated: 2025-01-13*
+*Last updated: 2025-01-23*
