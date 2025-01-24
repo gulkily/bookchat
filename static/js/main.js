@@ -9,7 +9,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     await verifyUsername();
     setupMessageInput();
     setupUsernameUI();
+    
+    // Load messages and ensure scroll
     await loadMessages();
+    
+    // Add scroll to bottom when window is resized
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => scrollToBottom(), 100);
+    });
 });
 
 async function verifyUsername() {
@@ -63,15 +72,73 @@ async function loadMessages() {
             const messageElement = createMessageElement(message);
             messagesContainer.appendChild(messageElement);
         });
+
+        // Scroll to bottom after a delay to ensure rendering
+        setTimeout(() => {
+            scrollToBottom(true); // Use immediate scroll for initial load
+            // Double-check scroll position after images/content loads
+            window.requestAnimationFrame(() => {
+                scrollToBottom(true);
+            });
+        }, 100);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        const messagesContainer = document.getElementById('messages-container');
+        messagesContainer.innerHTML = '<p class="error">Error loading messages. Please try again later.</p>';
+    }
+}
+
+async function sendMessage(content, type = 'message') {
+    let tempMessage;
+    try {
+        const timestamp = new Date().toISOString();
+        tempMessage = {
+            id: `temp-${Date.now()}`,
+            content: content,
+            author: currentUsername,
+            timestamp: timestamp
+        };
+        
+        // Create message element
+        const messagesContainer = document.getElementById('messages-container');
+        const messageElement = createMessageElement(tempMessage);
+        messagesContainer.appendChild(messageElement);
         
         // Scroll to bottom
-        const messagesDiv = document.getElementById('messages');
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        scrollToBottom();
         
-        return messages;
+        // Send message to server
+        const response = await fetch('/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                content: content,
+                type: type
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to send message');
+        }
+
+        return result;
     } catch (error) {
-        console.error('Error loading messages:', error);
-        return [];
+        console.error('Error:', error);
+        if (tempMessage) {
+            const element = document.getElementById(`message-${tempMessage.id}`);
+            if (element) {
+                element.classList.add('error');
+            }
+        }
+        throw error;
     }
 }
 
@@ -136,88 +203,6 @@ function createMessageElement(message) {
     messageDiv.appendChild(content);
 
     return messageDiv;
-}
-
-async function sendMessage(content, type = 'message') {
-    let tempMessage;
-    try {
-        const timestamp = new Date().toISOString();
-        tempMessage = {
-            id: `temp-${Date.now()}`,
-            content: content,
-            author: currentUsername,
-            timestamp: timestamp
-        };
-        
-        // Create message element
-        const messagesContainer = document.getElementById('messages-container');
-        const messageElement = createMessageElement(tempMessage);
-        messagesContainer.appendChild(messageElement);
-        
-        // Scroll to bottom
-        const messagesDiv = document.getElementById('messages');
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        
-        // Send message to server
-        const response = await fetch('/messages', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                content: content,
-                author: currentUsername,
-                type: type
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('Server response:', data);
-        
-        // Handle error response format
-        if (data.success === false) {
-            console.log('Detected error response');
-            throw new Error(data.error || 'Failed to send message');
-        }
-        
-        // Handle success response - either direct message data or wrapped in data field
-        const sentMessage = data.data || data;
-        console.log('Extracted message:', sentMessage);
-        
-        // Update temp message with real data
-        const pendingMessage = document.querySelector(`[data-message-id="${tempMessage.id}"]`);
-        if (pendingMessage) {
-            pendingMessage.setAttribute('data-message-id', sentMessage.id);
-            const timestamp = pendingMessage.querySelector('.timestamp');
-            if (timestamp) {
-                const formattedTime = formatTimestamp(sentMessage.timestamp);
-                timestamp.textContent = formattedTime;
-                timestamp.title = new Date(sentMessage.timestamp).toLocaleString();
-                timestamp.classList.remove('pending');
-                timestamp.classList.remove('error');
-            }
-        }
-        
-        const result = { success: true, message: sentMessage };
-        console.log('Returning result:', result);
-        return result;
-    } catch (error) {
-        console.error('Error sending message:', error);
-        const pendingMessage = document.querySelector(`[data-message-id="${tempMessage?.id}"]`);
-        if (pendingMessage) {
-            const timestamp = pendingMessage.querySelector('.timestamp');
-            if (timestamp) {
-                timestamp.className = 'timestamp error';
-                timestamp.textContent = 'Failed to send';
-                timestamp.title = error.message;
-            }
-        }
-        return { success: false, error: error.message };
-    }
 }
 
 async function changeUsername(newUsername) {
@@ -305,7 +290,7 @@ function setupMessageInput() {
         if (charCounter) {
             messageInput.addEventListener('input', () => {
                 const count = messageInput.value.length;
-                charCounter.textContent = `Characters: ${count}`;
+                charCounter.textContent = count;
             });
         }
 
@@ -326,7 +311,7 @@ function setupMessageInput() {
             messageInput.value = '';
             // Reset character counter
             if (charCounter) {
-                charCounter.textContent = 'Characters: 0';
+                charCounter.textContent = '0';
             }
             
             const result = await sendMessage(originalContent);
@@ -339,7 +324,7 @@ function setupMessageInput() {
                 messageInput.value = originalContent;
                 // Update character counter to reflect restored content
                 if (charCounter) {
-                    charCounter.textContent = `Characters: ${originalContent.length}`;
+                    charCounter.textContent = originalContent.length;
                 }
                 messageInput.classList.add('error');
                 setTimeout(() => messageInput.classList.remove('error'), 2000);
@@ -398,6 +383,23 @@ function formatTimestamp(timestamp) {
         }
     } catch (e) {
         return timestamp; // Return original string if any error occurs
+    }
+}
+
+// Helper function to scroll messages to bottom
+function scrollToBottom(immediate = false) {
+    const messagesDiv = document.getElementById('messages');
+    if (messagesDiv) {
+        // Force a reflow to ensure accurate scrollHeight
+        void messagesDiv.offsetHeight;
+        
+        const scrollHeight = messagesDiv.scrollHeight;
+        const maxScroll = scrollHeight - messagesDiv.clientHeight;
+        
+        messagesDiv.scrollTo({
+            top: maxScroll,
+            behavior: immediate ? 'auto' : 'smooth'
+        });
     }
 }
 

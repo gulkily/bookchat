@@ -119,19 +119,19 @@ test.describe('BookChat Frontend', () => {
     await highlight(charCounter);
 
     // Check initial state
-    await expect(charCounter).toHaveText('Characters: 0');
+    await expect(charCounter).toHaveText('0');
 
     // Type a message and verify counter updates
     await messageInput.fill('Hello');
-    await expect(charCounter).toHaveText('Characters: 5');
+    await expect(charCounter).toHaveText('5');
 
     // Type a longer message
     await messageInput.fill('Hello, world! This is a test message.');
-    await expect(charCounter).toHaveText('Characters: 37');
+    await expect(charCounter).toHaveText('37');
 
     // Clear the message
     await messageInput.fill('');
-    await expect(charCounter).toHaveText('Characters: 0');
+    await expect(charCounter).toHaveText('0');
   });
 
   test('message persistence across page reloads', async ({ page }) => {
