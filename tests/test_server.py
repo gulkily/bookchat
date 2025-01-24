@@ -106,6 +106,33 @@ async def test_test_message_endpoint(test_server):
             assert 'data' in data
             assert all(key in data['data'] for key in ['id', 'content', 'author', 'timestamp'])
 
+@pytest.mark.asyncio
+async def test_messages_response_structure(test_server):
+    """Test that the /messages endpoint returns the correct response structure."""
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f'{test_server}/messages') as response:
+            assert response.status == HTTPStatus.OK
+            data = await response.json()
+            
+            # Verify the response is a dictionary
+            assert isinstance(data, dict), "Response should be a dictionary, not a list or other type"
+            
+            # Verify required top-level keys
+            assert 'success' in data, "Response missing 'success' field"
+            assert 'messages' in data, "Response missing 'messages' field"
+            
+            # Verify types of fields
+            assert isinstance(data['success'], bool), "'success' field should be a boolean"
+            assert isinstance(data['messages'], list), "'messages' field should be a list"
+            
+            # If there are any messages, verify their structure
+            if data['messages']:
+                first_message = data['messages'][0]
+                assert isinstance(first_message, dict), "Each message should be a dictionary"
+                required_fields = {'content', 'author', 'timestamp'}
+                assert all(field in first_message for field in required_fields), \
+                    f"Messages should contain all required fields: {required_fields}"
+
 def test_find_available_port():
     """Test the port finding functionality."""
     # Test normal port finding
