@@ -2,7 +2,7 @@ requests==2.31.0
 PyGithub==2.1.1
 python-dotenv==1.0.0
 cryptography==41.0.7
-Jinja2==3.1.2
+aiohttp==3.9.1
 
 # Testing dependencies
 pytest==7.4.3

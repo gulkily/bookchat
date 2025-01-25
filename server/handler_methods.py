@@ -2,16 +2,7 @@
 
 import json
 import logging
-import os
-from datetime import datetime, timezone
-from pathlib import Path
-
 from aiohttp import web
-
-from server.config import (
-    STATIC_DIR,
-    TEMPLATES_DIR
-)
 
 from server.message_handler import MessageHandler
 
