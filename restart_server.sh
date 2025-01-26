@@ -6,27 +6,21 @@ if ! command -v pip3 &> /dev/null; then
     exit 1
 fi
 
-# Function to extract module name from requirement line
-# Handles both simple (requests==2.31.0) and complex (python-dotenv==1.0.0) package names
-get_module_name() {
-    local req=$1
-    # Get everything before == or >= or <= or ~=
-    local module=$(echo "$req" | sed 's/[=<>~].*//')
-    # Convert - to _ for import compatibility
-    echo "${module//-/_}"
-}
-
-# Check if any dependencies are missing
+# Get list of installed packages
+installed_packages=$(pip3 freeze)
 missing_deps=false
+
 while IFS= read -r line || [[ -n "$line" ]]; do
     # Skip empty lines and comments
     [[ -z "$line" || "$line" =~ ^#.*$ ]] && continue
     
-    module=$(get_module_name "$line")
-    if ! python3 -c "import $module" &> /dev/null; then
-        echo "Missing dependency: $module"
+    # Remove any version specifiers and whitespace
+    required_package=$(echo "$line" | sed 's/[<>=~].*//' | tr -d '[:space:]')
+    
+    # Check if package is in installed packages
+    if ! echo "$installed_packages" | grep -qi "^${required_package}=="; then
+        echo "Missing dependency: $required_package"
         missing_deps=true
-        break
     fi
 done < requirements.txt
 
