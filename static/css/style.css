@@ -212,21 +212,22 @@ body {
 }
 
 #change-username-btn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.95em;
-    padding: 8px 16px;
-    background: var(--button-bg);
-    color: var(--button-text);
-    border: none;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
+    color: var(--text-primary);
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    font-size: 0.9em;
+    transition: all 0.2s ease;
 }
 
 #change-username-btn:hover {
-    background: var(--button-hover);
+    background: var(--bg-primary);
+    border-color: var(--button-bg);
 }
 
 .username-icon {
@@ -882,4 +883,17 @@ body {
     white-space: pre-wrap;
     word-break: break-word;
     color: var(--text-default);
+}
+
+/* Message username */
+.username {
+    font-weight: bold;
+    color: var(--text-primary);
+    margin-right: 0.5rem;
+}
+
+.username::before {
+    content: '@';
+    opacity: 0.8;
+    margin-right: 1px;
 }

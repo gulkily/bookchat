@@ -21,6 +21,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
+// Function to update current user's display elements
+function updateUsernameDisplay(username) {
+    // Update the change username button with an icon
+    const changeButton = document.getElementById('change-username-btn');
+    if (changeButton) {
+        changeButton.innerHTML = `👤 ${username}`;
+    }
+}
+
 async function verifyUsername() {
     try {
         // TODO: Add timeout to fetch request to prevent hanging
@@ -33,18 +42,15 @@ async function verifyUsername() {
         currentUsername = data.username;
         
         localStorage.setItem('username', currentUsername);
-        
-        const usernameDisplay = document.getElementById('username-display');
-        if (usernameDisplay) {
-            usernameDisplay.textContent = currentUsername;
-        }
-        
-        return data.status === 'verified';
     } catch (error) {
         console.error('Error verifying username:', error);
         currentUsername = localStorage.getItem('username') || 'anonymous';
-        return false;
     }
+    
+    // Update username displays
+    updateUsernameDisplay(currentUsername);
+    
+    return currentUsername !== 'anonymous';
 }
 
 async function loadMessages() {
@@ -116,7 +122,8 @@ async function sendMessage(content, type = 'message') {
             },
             body: JSON.stringify({
                 content: content,
-                type: type
+                type: type,
+                author: currentUsername
             })
         });
 
@@ -126,18 +133,20 @@ async function sendMessage(content, type = 'message') {
 
         const result = await response.json();
         if (!result.success) {
-            throw new Error(result.error || 'Failed to send message');
+            const error = result.error || 'Failed to send message';
+            console.error('Error:', error);
+            if (tempMessage) {
+                const element = document.getElementById(`message-${tempMessage.id}`);
+                if (element) {
+                    element.classList.add('error');
+                }
+            }
+            throw new Error(error);
         }
 
         return result;
     } catch (error) {
         console.error('Error:', error);
-        if (tempMessage) {
-            const element = document.getElementById(`message-${tempMessage.id}`);
-            if (element) {
-                element.classList.add('error');
-            }
-        }
         throw error;
     }
 }
@@ -154,9 +163,9 @@ function createMessageElement(message) {
     const headerLeft = document.createElement('div');
     headerLeft.className = 'header-left';
 
-    // Add author
+    // Add author - no data-username-display here as this shows the message author
     const author = document.createElement('span');
-    author.className = 'author';
+    author.className = 'username';
     author.textContent = message.author || 'anonymous';
     headerLeft.appendChild(author);
 
@@ -170,13 +179,6 @@ function createMessageElement(message) {
         try {
             // Use either timestamp or createdAt field
             const messageDate = new Date(message.timestamp || message.createdAt);
-            const options = { 
-                month: 'short', 
-                day: 'numeric',
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: false 
-            };
             timestamp.textContent = formatTimestamp(message.timestamp || message.createdAt);
             timestamp.title = messageDate.toLocaleString();
         } catch (error) {
@@ -191,15 +193,7 @@ function createMessageElement(message) {
     // Create message content
     const content = document.createElement('div');
     content.className = 'content';
-    
-    // Strip signature block from content
-    let messageContent = message.content;
-    const signatureIndex = messageContent.indexOf('\n-- \n');
-    if (signatureIndex !== -1) {
-        messageContent = messageContent.substring(0, signatureIndex);
-    }
-    
-    content.textContent = messageContent;
+    content.textContent = message.content;
     messageDiv.appendChild(content);
 
     return messageDiv;
@@ -235,11 +229,8 @@ async function changeUsername(newUsername) {
         currentUsername = newUsername;
         localStorage.setItem('username', newUsername);
         
-        // Update display
-        const usernameDisplay = document.getElementById('username-display');
-        if (usernameDisplay) {
-            usernameDisplay.textContent = currentUsername;
-        }
+        // Update username displays
+        updateUsernameDisplay(newUsername);
         
         return true;
     } catch (error) {
@@ -252,10 +243,7 @@ async function changeUsername(newUsername) {
 // Add username change UI
 function setupUsernameUI() {
     // Update username display
-    const usernameDisplay = document.getElementById('username-display');
-    if (usernameDisplay) {
-        usernameDisplay.textContent = currentUsername;
-    }
+    updateUsernameDisplay(currentUsername);
 
     // Set up change username button click handler
     const changeButton = document.getElementById('change-username-btn');
@@ -288,9 +276,12 @@ function setupMessageInput() {
         // Add character counter functionality
         const charCounter = document.getElementById('js-char-counter');
         if (charCounter) {
+            function updateCharCount(input, counter) {
+                const count = input.value.length;
+                counter.textContent = `Characters: ${count}`;
+            }
             messageInput.addEventListener('input', () => {
-                const count = messageInput.value.length;
-                charCounter.textContent = count;
+                updateCharCount(messageInput, charCounter);
             });
         }
 
@@ -311,7 +302,7 @@ function setupMessageInput() {
             messageInput.value = '';
             // Reset character counter
             if (charCounter) {
-                charCounter.textContent = '0';
+                charCounter.textContent = 'Characters: 0';
             }
             
             const result = await sendMessage(originalContent);
@@ -324,7 +315,7 @@ function setupMessageInput() {
                 messageInput.value = originalContent;
                 // Update character counter to reflect restored content
                 if (charCounter) {
-                    charCounter.textContent = originalContent.length;
+                    charCounter.textContent = `Characters: ${originalContent.length}`;
                 }
                 messageInput.classList.add('error');
                 setTimeout(() => messageInput.classList.remove('error'), 2000);
@@ -393,13 +384,14 @@ function scrollToBottom(immediate = false) {
         // Force a reflow to ensure accurate scrollHeight
         void messagesDiv.offsetHeight;
         
-        const scrollHeight = messagesDiv.scrollHeight;
-        const maxScroll = scrollHeight - messagesDiv.clientHeight;
-        
-        messagesDiv.scrollTo({
-            top: maxScroll,
-            behavior: immediate ? 'auto' : 'smooth'
-        });
+        // Use scrollTop for better test compatibility
+        if (immediate) {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        } else {
+            messagesDiv.style.scrollBehavior = 'smooth';
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            messagesDiv.style.scrollBehavior = 'auto';
+        }
     }
 }
 

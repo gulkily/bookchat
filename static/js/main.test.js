@@ -62,6 +62,16 @@ describe('sendMessage', () => {
             <div id="messages"></div>
         `;
         
+        // Mock scrolling properties
+        const messagesDiv = document.getElementById('messages');
+        Object.defineProperty(messagesDiv, 'scrollTop', {
+            get: () => 0,
+            set: jest.fn()
+        });
+        Object.defineProperty(messagesDiv, 'scrollHeight', {
+            get: () => 1000
+        });
+        
         // Mock fetch
         global.fetch = jest.fn();
     });
@@ -76,12 +86,14 @@ describe('sendMessage', () => {
         
         global.fetch.mockResolvedValueOnce({
             ok: true,
-            json: () => Promise.resolve({ success: true, data: messageData })
+            json: () => Promise.resolve({
+                success: true,
+                data: messageData
+            })
         });
         
         const result = await sendMessage('Test message');
-        expect(result.success).toBe(true);
-        expect(result.message).toEqual(messageData);
+        expect(result.data).toEqual(messageData);
     });
     
     test('handles server error', async () => {
@@ -90,17 +102,13 @@ describe('sendMessage', () => {
             status: 500
         });
         
-        const result = await sendMessage('Test message');
-        expect(result.success).toBe(false);
-        expect(result.error).toContain('HTTP error');
+        await expect(sendMessage('Test message')).rejects.toThrow('HTTP error');
     });
     
     test('handles network error', async () => {
         global.fetch.mockRejectedValueOnce(new Error('Network error'));
         
-        const result = await sendMessage('Test message');
-        expect(result.success).toBe(false);
-        expect(result.error).toContain('Network error');
+        await expect(sendMessage('Test message')).rejects.toThrow('Network error');
     });
 });
 

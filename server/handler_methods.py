@@ -75,14 +75,34 @@ async def handle_username_change(request):
         if not new_username.replace('_', '').isalnum():
             return web.Response(status=400, text='Username can only contain letters, numbers, and underscores')
 
-        # For now, we'll just accept any valid username change
-        # In a real app, you might want to check if username is taken, etc.
-        return web.json_response({
+        # Create response
+        response = web.json_response({
             'success': True,
             'username': new_username
         })
+        
+        # Set username cookie that expires in 1 year
+        response.set_cookie('username', new_username, max_age=31536000, httponly=True)
+        
+        return response
     except Exception as e:
         logger.error(f'Error changing username: {e}')
+        return web.json_response({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+async def verify_username(request):
+    """Handle username verification request."""
+    try:
+        # For now, just return success since we don't have server-side username persistence
+        # In a real app, you would verify against a database or session
+        return web.json_response({
+            'status': 'verified',
+            'username': request.cookies.get('username', 'anonymous')
+        })
+    except Exception as e:
+        logger.error(f'Error verifying username: {e}')
         return web.json_response({
             'success': False,
             'error': str(e)

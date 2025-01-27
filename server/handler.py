@@ -15,7 +15,8 @@ from server.message_handler import MessageHandler
 from server.handler_methods import (
     serve_messages,
     handle_message_post,
-    handle_username_change
+    handle_username_change,
+    verify_username
 )
 
 class ChatRequestHandler:
@@ -30,6 +31,8 @@ class ChatRequestHandler:
         if request.method == 'GET':
             if request.path == '/messages':
                 return await serve_messages(request)
+            elif request.path == '/verify_username':
+                return await verify_username(request)
         elif request.method == 'POST':
             if request.path == '/messages':
                 return await handle_message_post(request)
