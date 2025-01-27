@@ -44,7 +44,8 @@ async def handle_message_post(request):
         if isinstance(response, dict) and not response.get('success', True):
             return web.json_response(response, status=400)
 
-        return web.json_response(response['data'], status=200)
+        # Return message data directly from the response
+        return web.json_response(response.get('data', {}), status=200)
 
     except json.JSONDecodeError:
         return web.json_response({
