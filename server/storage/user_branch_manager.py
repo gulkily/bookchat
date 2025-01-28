@@ -97,6 +97,10 @@ class UserBranchManager:
                     "BookChat Bot"
                 )
                 
+                # Push new branch to GitHub
+                if self.git_manager.use_github:
+                    self.git_manager._run_git_command(['push', '-u', 'origin', branch_name])
+                
                 # Update active users
                 self._update_active_user(username)
             
