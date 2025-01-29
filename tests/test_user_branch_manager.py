@@ -41,6 +41,56 @@ async def test_ensure_user_branch(user_manager, temp_repo):
     assert (messages_dir / 'README.md').exists()
 
 @pytest.mark.asyncio
+async def test_save_message_branch_location(user_manager, temp_repo):
+    """Test that messages are saved to the correct branch and location."""
+    username = 'test_user'
+    message = {
+        'content': 'Test message',
+        'author': username,
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    # Save message
+    message_id = user_manager.save_message(message)
+    assert message_id is not None
+    
+    # Get current branch before checking
+    original_branch = user_manager.git_manager._get_current_branch()
+    
+    try:
+        # Switch to user branch and verify message exists
+        user_manager.git_manager._run_git_command(['checkout', f'user/{username}'])
+        
+        # Check message exists in user's branch directory
+        user_message_path = user_manager.messages_dir / username / f"{message_id}.txt"
+        assert user_message_path.exists(), f"Message not found in user branch at {user_message_path}"
+        
+        # Verify message content
+        with open(user_message_path, 'r') as f:
+            content = f.read()
+            assert message['content'] in content
+            assert message['author'] in content
+            assert message['timestamp'] in content
+        
+        # Verify branch is properly tracked
+        branches = user_manager.git_manager._run_git_command(['branch', '-vv'])
+        branch_info = next(line for line in branches.split('\n') if f'user/{username}' in line)
+        assert '[origin/user/' in branch_info, "Branch not properly tracked with remote"
+        
+        # Verify commit history
+        log = user_manager.git_manager._run_git_command(['log', '--oneline', '-1'])
+        assert f"Add message {message_id}" in log, "Commit message not found"
+        assert username in log, "Author not found in commit"
+        
+    finally:
+        # Switch back to original branch
+        user_manager.git_manager._run_git_command(['checkout', original_branch])
+    
+    # Verify message exists in local pool
+    pool_message_path = user_manager.messages_dir / f"{username}_{message_id}.txt"
+    assert pool_message_path.exists(), f"Message not found in local pool at {pool_message_path}"
+
+@pytest.mark.asyncio
 async def test_save_message(user_manager):
     """Test saving a message to a user branch."""
     message = {
