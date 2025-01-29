@@ -1,5 +1,5 @@
 {
-  "last_updated": "2025-01-28T19:12:53.910387",
+  "last_updated": "2025-01-28T19:12:55.131852",
   "users": {
     "user1": {
       "username": "user1",
@@ -13,8 +13,8 @@
     },
     "test_user": {
       "username": "test_user",
-      "last_active": "2025-01-28T19:12:53.910303",
-      "message_count": 2
+      "last_active": "2025-01-28T19:12:55.131750",
+      "message_count": 3
     }
   }
 }
