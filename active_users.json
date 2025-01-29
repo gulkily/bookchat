@@ -1,4 +1,10 @@
 {
-  "last_updated": "2025-01-28T19:08:30.337671",
-  "users": {}
+  "last_updated": "2025-01-28T19:11:07.941726",
+  "users": {
+    "test_user": {
+      "username": "test_user",
+      "last_active": "2025-01-28T19:11:07.940061",
+      "message_count": 0
+    }
+  }
 }
