@@ -3,9 +3,11 @@
 import asyncio
 import logging
 from aiohttp import web
+from pathlib import Path
 from server.config import get_config
 from server.handler_methods import handle_message_post, serve_messages
-from server.storage import init_storage
+from server.storage.git_manager import GitManager
+from server.storage.user_branch_manager import UserBranchManager
 from server.logger import setup_logging
 
 logger = setup_logging()
@@ -16,17 +18,16 @@ async def init_app() -> web.Application:
     
     # Load config
     config = get_config()
-    logger.debug(f"Config loaded: SYNC_TO_GITHUB={config.get('SYNC_TO_GITHUB')}, GITHUB_REPO={config.get('GITHUB_REPO')}")
+    data_dir = Path(config['STORAGE_DIR'])
     
-    # Initialize storage with git if configured
-    app['storage'] = init_storage(
-        config['STORAGE_DIR'],
-        use_git=config['SYNC_TO_GITHUB']
-    )
+    # Initialize git manager and user branch manager
+    git_manager = GitManager(data_dir)
+    app['message_store'] = UserBranchManager(git_manager)
+    logger.info("Initialized UserBranchManager for message storage")
     
-    # Setup routes
-    app.router.add_post('/messages', handle_message_post)
+    # Setup routes - only /messages endpoint needed
     app.router.add_get('/messages', serve_messages)
+    app.router.add_post('/messages', handle_message_post)
     
     return app
 

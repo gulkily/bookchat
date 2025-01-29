@@ -4,16 +4,17 @@ import json
 import logging
 from aiohttp import web
 
-from server.message_handler import MessageHandler
-
 logger = logging.getLogger(__name__)
 
 async def serve_messages(request):
     """Serve messages."""
     try:
-        message_handler = MessageHandler(request.app['storage'])
-        response = await message_handler.handle_get_messages()
-        return web.json_response(response)
+        message_store = request.app['message_store']
+        messages = message_store.get_messages()
+        return web.json_response({
+            'success': True,
+            'data': messages
+        })
     except Exception as e:
         logger.error(f'Error serving messages: {e}')
         return web.json_response({
@@ -34,75 +35,33 @@ async def handle_message_post(request):
                 'error': 'Missing required fields'
             }, status=400)
 
-        # Create message
-        message_handler = MessageHandler(request.app['storage'])
-        response = await message_handler.handle_post_message({
+        # Save message directly using UserBranchManager
+        message_store = request.app['message_store']
+        message_id = message_store.save_message({
             'content': content,
-            'author': author
+            'author': author,
+            'timestamp': None  # Let UserBranchManager set the timestamp
         })
 
-        if isinstance(response, dict) and not response.get('success', True):
-            return web.json_response(response, status=400)
+        if message_id:
+            # Get the saved message
+            messages = message_store.get_messages()
+            message = next((m for m in messages if m['id'] == message_id), None)
+            if message:
+                return web.json_response(message, status=200)
 
-        # Return message data directly from the response
-        return web.json_response(response.get('data', {}), status=200)
+        return web.json_response({
+            'success': False,
+            'error': 'Failed to save message'
+        }, status=500)
 
     except json.JSONDecodeError:
         return web.json_response({
             'success': False,
-            'error': 'Invalid JSON data'
+            'error': 'Invalid JSON'
         }, status=400)
     except Exception as e:
         logger.error(f'Error handling message post: {e}')
-        return web.json_response({
-            'success': False,
-            'error': str(e)
-        }, status=500)
-
-async def handle_username_change(request):
-    """Handle username change request."""
-    try:
-        data = await request.json()
-        old_username = data.get('old_username', '').strip()
-        new_username = data.get('new_username', '').strip()
-
-        if not new_username:
-            return web.Response(status=400, text='New username cannot be empty')
-
-        if not (3 <= len(new_username) <= 20):
-            return web.Response(status=400, text='Username must be between 3 and 20 characters')
-
-        if not new_username.replace('_', '').isalnum():
-            return web.Response(status=400, text='Username can only contain letters, numbers, and underscores')
-
-        # Create response
-        response = web.json_response({
-            'success': True,
-            'username': new_username
-        })
-        
-        # Set username cookie that expires in 1 year
-        response.set_cookie('username', new_username, max_age=31536000, httponly=True)
-        
-        return response
-    except Exception as e:
-        logger.error(f'Error changing username: {e}')
-        return web.json_response({
-            'success': False,
-            'error': str(e)
-        }, status=500)
-
-async def verify_username(request):
-    """Handle username verification request."""
-    try:
-        # For now, just return success since we don't have server-side username persistence
-        # In a real app, you would verify against a database or session
-        return web.json_response({
-            'status': 'verified',
-            'username': request.cookies.get('username', 'anonymous')
-        })
-    except Exception as e:
-        logger.error(f'Error verifying username: {e}')
         return web.json_response({
             'success': False,
             'error': str(e)
