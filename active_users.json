@@ -1,20 +1,15 @@
 {
-  "last_updated": "2025-01-28T19:13:01.543121",
+  "last_updated": "2025-01-28T19:11:16.195104",
   "users": {
     "user1": {
       "username": "user1",
-      "last_active": "2025-01-28T19:13:00.283044",
-      "message_count": 3
+      "last_active": "2025-01-28T19:11:14.859938",
+      "message_count": 2
     },
     "user2": {
       "username": "user2",
-      "last_active": "2025-01-28T19:13:01.543035",
-      "message_count": 3
-    },
-    "test_user": {
-      "username": "test_user",
-      "last_active": "2025-01-28T19:12:55.838214",
-      "message_count": 4
+      "last_active": "2025-01-28T19:11:16.193355",
+      "message_count": 0
     }
   }
 }
