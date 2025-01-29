@@ -41,21 +41,39 @@ class GitManager:
     """Manages git operations for message storage."""
 
     def __init__(self, repo_path: Union[str, Path], test_mode: bool = False):
-        """Initialize GitManager.
-
+        """Initialize git manager.
+        
         Args:
-            repo_path: Path to the git repository
-            test_mode: If True, operates in test mode without GitHub sync
+            repo_path: Path to git repository
+            test_mode: If True, don't raise errors on git command failures
         """
         self.repo_path = Path(repo_path)
         self.test_mode = test_mode
-        self.repo_name = os.getenv('GITHUB_REPO') if not test_mode else None
         self.messages_dir = self.repo_path / 'messages'
-        
-        # Create necessary directories
-        self.repo_path.mkdir(exist_ok=True)
         self.messages_dir.mkdir(exist_ok=True)
         
+        # Initialize repository if it doesn't exist
+        if not (self.repo_path / '.git').exists():
+            self._run_git_command(['init'])
+            self._run_git_command(['config', 'user.email', 'test@example.com'])
+            self._run_git_command(['config', 'user.name', 'Test User'])
+            
+            # Create initial README
+            readme_path = self.repo_path / 'README.md'
+            if not readme_path.exists():
+                with open(readme_path, 'w') as f:
+                    f.write('# Test Repository\n\nThis is a test repository.')
+            
+            # Add and commit README
+            self._run_git_command(['add', '.'])
+            self._run_git_command(['commit', '-m', 'Initial commit'])
+            
+            # Rename master to main if needed
+            current_branch = self.get_current_branch()
+            if current_branch == 'master':
+                self._run_git_command(['branch', '-M', 'main'])
+        
+        self.repo_name = os.getenv('GITHUB_REPO') if not test_mode else None
         self.github_token = os.environ.get('GITHUB_TOKEN')
         
         # GitHub sync is required as per spec
@@ -82,24 +100,6 @@ class GitManager:
         
         # Set up messages directory path
         self.messages_dir = self.repo_path / 'messages'
-        
-        # Initialize git if needed
-        if not (self.repo_path / '.git').exists():
-            self._run_git_command(['init'])
-            self._run_git_command(['config', 'user.email', 'bookchat@example.com'])
-            self._run_git_command(['config', 'user.name', 'BookChat Bot'])
-            
-            # Add and commit initial files
-            self._run_git_command(['add', '.'])
-            self._run_git_command(['commit', '-m', 'Initial commit'])
-            
-            if self.use_github:
-                # Add remote and configure token
-                self._run_git_command(['remote', 'add', 'origin', f'https://github.com/{self.repo_name}.git'])
-                if self.github_token:
-                    self._run_git_command(['config', '--local', 'http.https://github.com/.extraheader', f'AUTHORIZATION: basic {self.github_token}'])
-                # Initial push
-                self._run_git_command(['push', '-u', 'origin', 'main'])
         
     async def init(self):
         """Initialize the git repository."""
@@ -204,54 +204,45 @@ class GitManager:
             logger.error(f"Error setting up git: {e}")
             return False
 
-    def _run_git_command(self, command, check=True):
+    def _run_git_command(self, command: List[str], input_data: Optional[str] = None) -> subprocess.CompletedProcess:
         """Run a git command in the repository directory.
-
+        
         Args:
-            command: List of command parts
-            check: If True, raise an exception on non-zero exit code
-
+            command: List of command arguments
+            input_data: Optional input data for the command
+            
         Returns:
-            CompletedProcess instance
+            CompletedProcess instance with command output
         """
         try:
-            # Remove 'git' if it's the first command part since we're already running git
-            if command[0] == 'git':
-                command = command[1:]
-                
-            logger.debug(f"Running git command: git {' '.join(command)}")
-            logger.debug(f"Working directory: {str(self.repo_path)}")
-
+            # Add git command at start
+            full_command = ['git'] + command
+            
+            # Log the command being run
+            logger.debug(f"Running git command: {' '.join(full_command)}")
+            
+            # Run command
             result = subprocess.run(
-                ['git'] + command,  # Properly construct git command
+                full_command,
                 cwd=str(self.repo_path),
-                env=os.environ.copy(),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
-                check=check and not self.test_mode
+                input=input_data
             )
-
+            
+            # Check for errors
+            result.check_returncode()
+            
+            # Log output if present
             if result.stdout:
-                logger.debug(f"Command stdout: {result.stdout}")
-            if result.stderr:
-                logger.debug(f"Command stderr: {result.stderr}")
-
-            if result.returncode != 0:
-                logger.error(f"Git command failed: git {' '.join(command)}")
-                logger.error(f"Return code: {result.returncode}")
-                logger.error(f"Stderr: {result.stderr}")
-                if not self.test_mode and check:
-                    raise subprocess.CalledProcessError(
-                        result.returncode, ['git'] + command, result.stdout, result.stderr
-                    )
+                logger.debug(f"Command output: {result.stdout}")
+            
             return result
+            
         except subprocess.CalledProcessError as e:
-            if not self.test_mode and check:
-                raise
-            logger.error(f"Git command failed: git {' '.join(command)}")
-            logger.error(f"Exception: {str(e)}")
-            return e
+            # Log error and re-raise
+            logger.error(f"Git command failed: {e.stderr}")
+            raise
 
     def sync_changes_to_github(self, filepath, author="BookChat Bot", commit_message=None):
         """Sync changes to GitHub."""
@@ -549,6 +540,77 @@ class GitManager:
             return result.stdout.strip()
         except subprocess.CalledProcessError:
             return ""
+
+    def get_commit_message(self, commit_hash: str) -> str:
+        """Get commit message for a given hash."""
+        try:
+            result = self._run_git_command(['log', '-1', '--pretty=format:%s', commit_hash])
+            return result.stdout
+        except subprocess.CalledProcessError:
+            return ""
+
+    def get_current_branch(self) -> str:
+        """Get the name of the current Git branch.
+        
+        Returns:
+            Name of the current branch
+        """
+        try:
+            result = self._run_git_command(['branch', '--show-current'])
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error getting current branch: {e}")
+            return 'main'  # Default to main if we can't get current branch
+
+    def branch_exists(self, branch_name: str) -> bool:
+        """Check if a branch exists.
+        
+        Args:
+            branch_name: Name of the branch to check
+            
+        Returns:
+            True if branch exists, False otherwise
+        """
+        try:
+            result = self._run_git_command(['branch', '--list', branch_name])
+            return bool(result.stdout.strip())
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error checking branch existence: {e}")
+            return False
+
+    def create_branch(self, branch_name: str) -> None:
+        """Create a new branch.
+        
+        Args:
+            branch_name: Name of branch to create
+        """
+        try:
+            # Create branch
+            self._run_git_command(['branch', branch_name])
+            
+            # Log success
+            logger.debug(f"Created branch {branch_name}")
+            
+        except subprocess.CalledProcessError as e:
+            # Log error and re-raise
+            logger.error(f"Error creating branch {branch_name}: {e.stderr}")
+            raise
+            
+    def checkout_branch(self, branch_name: str) -> bool:
+        """Checkout a branch.
+        
+        Args:
+            branch_name: Name of the branch to checkout
+            
+        Returns:
+            True if checkout was successful, False otherwise
+        """
+        try:
+            self._run_git_command(['checkout', branch_name])
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error checking out branch: {e}")
+            return False
 
 def main():
     """Main function for testing"""

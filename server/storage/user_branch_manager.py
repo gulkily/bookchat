@@ -1,12 +1,14 @@
 """User branch manager for git-based storage."""
 
 import os
-import logging
 import json
+import logging
+import secrets
+import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
-from datetime import datetime
-import secrets
+from .git_manager import GitManager
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ class UserBranchManager:
     def _get_user_dir(self, username: str) -> Path:
         """Get directory for user's messages."""
         user_dir = self.messages_dir / username
-        user_dir.mkdir(exist_ok=True)
+        user_dir.mkdir(parents=True, exist_ok=True)
         return user_dir
 
     def ensure_user_branch(self, username: str) -> bool:
@@ -43,23 +45,22 @@ class UserBranchManager:
             bool: True if branch was created or already exists, False on error
         """
         try:
-            self._ensure_user_branch(username)
-            return True
+            return self._ensure_user_branch(username)
         except Exception as e:
             logger.error(f'Error ensuring user branch: {e}')
             return False
 
-    def _ensure_user_branch(self, username: str):
+    def _ensure_user_branch(self, username: str) -> bool:
         """Create user branch if it doesn't exist."""
         try:
             branch = self._get_user_branch(username)
             
             # Store current branch
-            current_branch = self.git._get_current_branch()
+            current_branch = self.git.get_current_branch()
             
             if not self.git.branch_exists(branch):
                 # Create new branch from main
-                self.git._run_git_command(['checkout', 'main'])
+                self.git.checkout_branch('main')
                 self.git.create_branch(branch)
                 self.git.checkout_branch(branch)
                 
@@ -71,72 +72,59 @@ class UserBranchManager:
                         f.write(f'# Messages for {username}\n\nThis directory contains messages for user {username}.')
                 
                 # Add and commit the changes
-                self.git._run_git_command(['add', str(user_dir)])
+                self.git._run_git_command(['add', f'messages/{username}'])
                 self.git._run_git_command(['commit', '-m', f'Initialize messages directory for user {username}'])
             
             # Return to original branch
-            self.git._run_git_command(['checkout', current_branch])
+            self.git.checkout_branch(current_branch)
+            return True
             
         except Exception as e:
             logger.error(f'Error ensuring user branch for {username}: {e}')
             # Try to return to main branch on error
             try:
-                self.git._run_git_command(['checkout', 'main'])
+                self.git.checkout_branch('main')
             except:
                 pass
-            raise
+            return False
 
     def save_message(self, message: Dict[str, str]) -> Optional[str]:
         """Save a message to the appropriate user branch."""
         try:
-            author = message['author']
-            content = message['content']
-            timestamp = message.get('timestamp') or datetime.utcnow().isoformat()
-            message_id = secrets.token_urlsafe(8)
-
+            username = message['author']
+            message_id = str(uuid.uuid4())
+            
+            # Make sure user branch exists
+            if not self.ensure_user_branch(username):
+                logger.error('Failed to ensure user branch')
+                return None
+            
             # Store current branch
-            current_branch = self.git._get_current_branch()
-
+            current_branch = self.git.get_current_branch()
+            
             try:
-                # Ensure user branch exists and switch to it
-                self._ensure_user_branch(author)
-                user_branch = self._get_user_branch(author)
-                self.git._run_git_command(['checkout', user_branch])
-
-                # Prepare message data
-                message_data = {
-                    'id': message_id,
-                    'content': content,
-                    'author': author,
-                    'timestamp': timestamp
-                }
-
+                # Switch to user branch
+                user_branch = self._get_user_branch(username)
+                self.git.checkout_branch(user_branch)
+                
+                # Create user directory if it doesn't exist
+                user_dir = self._get_user_dir(username)
+                
                 # Save message to file
-                user_dir = self._get_user_dir(author)
-                message_file = user_dir / f'{message_id}.txt'
-                message_file.write_text(json.dumps(message_data, indent=2))
-
-                # Update cache
-                if author in self._message_cache:
-                    self._message_cache[author].append(message_data)
-
-                # Add and commit changes
-                self.git._run_git_command(['add', str(message_file)])
-                self.git._run_git_command(['commit', '-m', f'Add message {message_id} from {author}'])
-
+                message_path = user_dir / f'{message_id}.json'
+                with open(message_path, 'w') as f:
+                    json.dump(message, f, indent=2)
+                
+                # Add and commit
+                self.git._run_git_command(['add', f'messages/{username}/{message_id}.json'])
+                self.git._run_git_command(['commit', '-m', f'Add message {message_id}'])
+                
                 return message_id
-
+                
             finally:
-                # Always try to return to original branch
-                try:
-                    self.git._run_git_command(['checkout', current_branch])
-                except:
-                    # If we can't return to original branch, at least try main
-                    try:
-                        self.git._run_git_command(['checkout', 'main'])
-                    except:
-                        pass
-
+                # Return to original branch
+                self.git.checkout_branch(current_branch)
+                
         except Exception as e:
             logger.error(f'Error saving message: {e}')
             return None
@@ -173,7 +161,7 @@ class UserBranchManager:
             user_dir = self._get_user_dir(username)
             
             # Read all message files
-            for message_file in user_dir.glob('*.txt'):
+            for message_file in user_dir.glob('*.json'):
                 if message_file.is_file():
                     try:
                         with open(message_file, 'r') as f:
