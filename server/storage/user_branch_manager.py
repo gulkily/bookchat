@@ -30,10 +30,8 @@ class UserBranchManager:
         return f'user/{username}'
 
     def _get_user_dir(self, username: str) -> Path:
-        """Get directory for user's messages."""
-        user_dir = self.messages_dir / username
-        user_dir.mkdir(parents=True, exist_ok=True)
-        return user_dir
+        """Get the messages directory."""
+        return Path(self.messages_dir)
 
     def ensure_user_branch(self, username: str) -> bool:
         """Create user branch if it doesn't exist.
@@ -64,16 +62,15 @@ class UserBranchManager:
                 self.git.create_branch(branch)
                 self.git.checkout_branch(branch)
                 
-                # Create user directory and README
-                user_dir = self._get_user_dir(username)
-                readme_path = user_dir / 'README.md'
+                # Add README to messages directory
+                readme_path = self.messages_dir / 'README.md'
                 if not readme_path.exists():
                     with open(readme_path, 'w') as f:
-                        f.write(f'# Messages for {username}\n\nThis directory contains messages for user {username}.')
+                        f.write(f'# Messages\n\nThis directory contains messages.')
                 
                 # Add and commit the changes
-                self.git._run_git_command(['add', f'messages/{username}'])
-                self.git._run_git_command(['commit', '-m', f'Initialize messages directory for user {username}'])
+                self.git._run_git_command(['add', 'messages/README.md'])
+                self.git._run_git_command(['commit', '-m', f'Initialize messages for user {username}'])
             
             # Return to original branch
             self.git.checkout_branch(current_branch)
@@ -107,16 +104,13 @@ class UserBranchManager:
                 user_branch = self._get_user_branch(username)
                 self.git.checkout_branch(user_branch)
                 
-                # Create user directory if it doesn't exist
-                user_dir = self._get_user_dir(username)
-                
-                # Save message to file
-                message_path = user_dir / f'{message_id}.json'
+                # Save message to file in messages directory
+                message_path = self.messages_dir / f'{message_id}.json'
                 with open(message_path, 'w') as f:
                     json.dump(message, f, indent=2)
                 
                 # Add and commit
-                self.git._run_git_command(['add', f'messages/{username}/{message_id}.json'])
+                self.git._run_git_command(['add', f'messages/{message_id}.json'])
                 self.git._run_git_command(['commit', '-m', f'Add message {message_id}'])
                 
                 return message_id
@@ -137,11 +131,15 @@ class UserBranchManager:
 
             # Get all messages
             all_messages = []
-            for user_dir in self.messages_dir.iterdir():
-                if user_dir.is_dir() and not user_dir.name.startswith('.'):
-                    messages = self._get_user_messages(user_dir.name)
-                    all_messages.extend(messages)
-            
+            for message_file in self.messages_dir.glob('*.json'):
+                if message_file.is_file():
+                    try:
+                        with open(message_file, 'r') as f:
+                            message_data = json.load(f)
+                            all_messages.append(message_data)
+                    except Exception as e:
+                        logger.error(f'Error reading message file {message_file}: {e}')
+
             # Sort by timestamp
             all_messages.sort(key=lambda x: x.get('timestamp', ''))
             return all_messages
@@ -158,15 +156,13 @@ class UserBranchManager:
                 return self._message_cache[username]
 
             messages = []
-            user_dir = self._get_user_dir(username)
-            
-            # Read all message files
-            for message_file in user_dir.glob('*.json'):
+            for message_file in self.messages_dir.glob('*.json'):
                 if message_file.is_file():
                     try:
                         with open(message_file, 'r') as f:
                             message_data = json.load(f)
-                            messages.append(message_data)
+                            if message_data['author'] == username:
+                                messages.append(message_data)
                     except Exception as e:
                         logger.error(f'Error reading message file {message_file}: {e}')
 

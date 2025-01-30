@@ -10,6 +10,7 @@ import subprocess
 
 from server.storage import StorageBackend
 from server.storage.git_manager import GitManager
+from server.storage.user_branch_manager import UserBranchManager
 
 # Get logger for this module
 logger = logging.getLogger(__name__)
@@ -69,57 +70,29 @@ class GitStorage(StorageBackend):
             return False
 
     async def save_message(self, message: Dict[str, str]) -> Optional[str]:
-        """Save a new message to the Git repository.
+        """Save a message to git storage.
         
         Args:
-            message: Dictionary containing message data (author, content, timestamp)
-        
+            message: Message to save
+            
         Returns:
             Message ID if successful, None otherwise
         """
         try:
-            # Format filename like existing messages: YYYYMMDD_HHMMSS_username.txt
-            timestamp = datetime.strptime(message['timestamp'], '%Y-%m-%dT%H:%M:%S%z')
-            filename = f"{timestamp.strftime('%Y%m%d_%H%M%S')}_{message['author']}.txt"
-            message_path = self.messages_dir / filename
-            logger.debug(f"Message will be saved to: {message_path}")
+            # Create UserBranchManager
+            user_manager = UserBranchManager(self.git_manager.git)
             
-            # Check if messages directory exists
-            if not self.messages_dir.exists():
-                logger.error(f"Messages directory does not exist: {self.messages_dir}")
-                return None
+            # Save message using UserBranchManager
+            message_id = user_manager.save_message(message)
             
-            # Format message with metadata footers
-            formatted_message = (
-                f"ID: {filename}\n"
-                f"Content: {message['content']}\n"
-                f"Author: {message['author']}\n"
-                f"Timestamp: {message['timestamp']}\n"
-            )
-            
-            # Write message to file
-            logger.info(f"Writing message to: {message_path}")
-            try:
-                with open(message_path, 'w') as f:
-                    f.write(formatted_message)
-                logger.debug(f"Successfully wrote message to file: {message_path}")
-                logger.debug(f"File exists after write: {message_path.exists()}")
-                logger.debug(f"File contents after write: {message_path.read_text() if message_path.exists() else 'FILE NOT FOUND'}")
+            # Push changes if enabled
+            if self.git_manager.push_enabled:
+                await self.git_manager.push()
                 
-                # Add and commit the file
-                self.git_manager.add_and_commit_file(str(message_path), f'Add message from {message["author"]}', message['author'])
-                
-                # Push changes to GitHub
-                self.git_manager.push()
-                
-                logger.info("Message saved and synced successfully")
-                return filename.replace('.txt', '')
-            except Exception as e:
-                logger.error(f"Failed to save message: {e}\n{traceback.format_exc()}")
-                return None
+            return message_id
             
         except Exception as e:
-            logger.error(f"Error saving message: {e}\n{traceback.format_exc()}")
+            logger.error(f"Error saving message: {e}")
             return None
 
     async def get_messages(self) -> List[Dict[str, Any]]:
