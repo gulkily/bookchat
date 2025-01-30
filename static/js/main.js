@@ -6,7 +6,10 @@ let messageVerificationEnabled = false;
 // Initialize everything
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM loaded, initializing...');
-    await verifyUsername();
+    // Initialize username from localStorage or use anonymous
+    currentUsername = localStorage.getItem('username') || 'anonymous';
+    updateUsernameDisplay(currentUsername);
+    
     setupMessageInput();
     setupUsernameUI();
     
@@ -28,29 +31,6 @@ function updateUsernameDisplay(username) {
     if (changeButton) {
         changeButton.innerHTML = `👤 ${username}`;
     }
-}
-
-async function verifyUsername() {
-    try {
-        // TODO: Add timeout to fetch request to prevent hanging
-        // TODO: Add retry logic for failed requests
-        const response = await fetch('/verify_username');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        currentUsername = data.username;
-        
-        localStorage.setItem('username', currentUsername);
-    } catch (error) {
-        console.error('Error verifying username:', error);
-        currentUsername = localStorage.getItem('username') || 'anonymous';
-    }
-    
-    // Update username displays
-    updateUsernameDisplay(currentUsername);
-    
-    return currentUsername !== 'anonymous';
 }
 
 async function loadMessages() {
