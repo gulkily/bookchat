@@ -1,4 +1,0 @@
-ID: 20250126_131613
-Content: Testing username persistence
-Author: PersistenceTestUser
-Timestamp: 2025-01-26T13:16:13-05:00

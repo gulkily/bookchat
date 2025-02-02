@@ -1,4 +1,0 @@
-ID: 20250122_115337
-Content: Hello, this is a test message
-Author: test_user
-Timestamp: 2025-01-22T11:53:37-05:00

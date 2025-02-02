@@ -1,4 +1,0 @@
-ID: 20250118_182221
-Content: ff
-Author: ilyag
-Timestamp: 2025-01-18T18:22:21-05:00

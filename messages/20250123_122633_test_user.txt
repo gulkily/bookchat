@@ -1,4 +1,0 @@
-ID: 20250123_122633_test_user.txt
-Content: Test message content
-Author: test_user
-Timestamp: 2025-01-23T12:26:33+0000

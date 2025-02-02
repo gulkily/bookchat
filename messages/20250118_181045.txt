@@ -1,4 +1,0 @@
-ID: 20250118_181045
-Content: This message should persist
-Author: anonymous
-Timestamp: 2025-01-18T18:10:45-05:00

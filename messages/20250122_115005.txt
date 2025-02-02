@@ -1,4 +1,0 @@
-ID: 20250122_115005
-Content: Test message for GitHub sync
-Author: test_author
-Timestamp: 2025-01-22T11:50:05-05:00

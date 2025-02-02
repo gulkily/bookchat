@@ -1,91 +1,86 @@
 # BookChat
 
-A simple chat application for book discussions.
+A distributed chat system that uses git for message storage and synchronization.
 
 ## Features
 
-- Real-time messaging
-- File-based or Git-based storage
-- Simple and intuitive interface
-
-## Project Structure
-
-```
-bookchat/
-├── doc/
-│   └── DEVELOPMENT.md
-├── server/
-│   ├── storage/
-│   │   ├── __init__.py
-│   │   ├── file_storage.py
-│   │   ├── git_storage.py
-│   │   └── git_manager.py
-│   ├── __init__.py
-│   ├── config.py
-│   ├── handler.py
-│   ├── handler_methods.py
-│   ├── logger.py
-│   ├── main.py
-│   ├── message_handler.py
-│   └── utils.py
-├── static/
-│   ├── css/
-│   │   └── style.css
-│   ├── js/
-│   │   └── main.js
-│   └── index.html
-├── tests/
-│   ├── __init__.py
-│   ├── test_config.py
-│   ├── test_file_storage.py
-│   ├── test_git_storage.py
-│   ├── test_handler_methods.py
-│   └── test_message_handler.py
-├── .env.example
-├── .gitignore
-├── CHANGELOG.md
-├── LICENSE
-├── README.md
-└── requirements.txt
-```
+- Message storage in git repositories
+- User-specific branches for message isolation
+- Command-line utilities for git operations
+- HTTP server for web access
+- Flexible architecture supporting multiple implementations
 
 ## Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/bookchat.git
+git clone https://github.com/gulkily/bookchat.git
 cd bookchat
 ```
 
-2. Create and activate a virtual environment:
+2. Install dependencies:
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
-```bash
+# Core dependencies
 pip install -r requirements.txt
+
+# Development dependencies (optional)
+pip install -r requirements-dev.txt
 ```
 
-4. Copy `.env.example` to `.env` and configure:
+3. Make utilities executable:
 ```bash
-cp .env.example .env
+chmod +x bin/*
 ```
 
 ## Usage
 
-1. Start the server:
-```bash
-python -m server.main
-```
+### Command-line Utilities
 
-2. Open your browser to `http://localhost:8080`
+The system provides both Python and shell script implementations of core utilities:
+
+#### Branch Management
+- `bin/branch-current` or `bin/branch_utils.py current`: Get current branch
+- `bin/branch-switch` or `bin/branch_utils.py switch <branch>`: Switch branches
+- `bin/branch-ensure` or `bin/branch_utils.py ensure <username>`: Create user branch
+
+#### Message Management
+- `bin/message-create` or `bin/message_utils.py create <author>`: Create message
+- `bin/message-save` or `bin/message_utils.py save <file>`: Save message
+
+#### Git Sync
+- `bin/git-sync-push` or `bin/git_sync.py push`: Push changes
+- `bin/git-sync-pull` or `bin/git_sync.py pull`: Pull changes
+
+### HTTP Server
+
+Start the server:
+```bash
+python3 server/main.py
+```
 
 ## Development
 
-See [DEVELOPMENT.md](doc/DEVELOPMENT.md) for development guidelines.
+1. Install development dependencies:
+```bash
+pip install -r requirements-dev.txt
+```
+
+2. Run tests:
+```bash
+pytest tests/
+```
+
+3. Format code:
+```bash
+black .
+isort .
+```
+
+4. Lint code:
+```bash
+flake8
+```
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+See LICENSE file for details.

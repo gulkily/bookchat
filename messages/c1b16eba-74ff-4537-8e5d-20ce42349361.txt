@@ -1,5 +1,0 @@
-asdffdf
--- 
-Author: ilyag
-Timestamp: 2025-01-17T10:29:57.076441
-verified: "true"

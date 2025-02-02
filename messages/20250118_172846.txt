@@ -1,4 +1,0 @@
-ID: 20250118_172846
-Content: Testing message status
-Author: anonymous
-Timestamp: 2025-01-18T17:28:46-05:00
