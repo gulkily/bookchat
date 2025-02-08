@@ -1,5 +1,77 @@
 #!/usr/bin/env python3
 
+"""
+Chat Server Implementation
+=========================
+
+This module implements a full-featured HTTP server for a real-time chat application with the following capabilities:
+
+Key Features:
+- Asynchronous message handling using asyncio
+- Cross-Origin Resource Sharing (CORS) support
+- Static file serving with proper content type detection
+- Template rendering engine
+- Automatic port selection
+- Browser auto-launch functionality
+- WSL (Windows Subsystem for Linux) compatibility
+- Comprehensive error handling and logging
+
+Technical Details:
+-----------------
+1. Server Architecture:
+   - Built on Python's HTTPServer and BaseHTTPRequestHandler
+   - Custom ChatServer class extending HTTPServer
+   - Custom ChatRequestHandler class for request processing
+   
+2. Message Handling:
+   - Async message processing via MessageHandler class
+   - Persistent storage using FileStorage
+   - JSON-based message format
+   
+3. Endpoints:
+   - GET /messages: Retrieve chat messages
+   - POST /messages: Send new messages
+   - GET /test_message: Test endpoint for message format
+   - GET /: Serve main application page
+   - GET /static/*: Serve static assets
+   
+4. Security Features:
+   - CORS headers for cross-origin requests
+   - Safe template variable evaluation
+   - Sanitized file path handling
+
+Environment Variables:
+--------------------
+- DEBUG: Set to 'true' for detailed logging
+- NO_BROWSER: Set to prevent automatic browser launch
+- SERVER_PORT: Automatically set to the selected port number
+
+Dependencies:
+------------
+Standard Library:
+- os, json, logging, asyncio, socket
+- webbrowser, threading, platform, sys
+- http.server, urllib.parse
+- datetime, pathlib
+
+Custom Modules:
+- server.storage.file_storage
+- server.message_handler
+
+Usage:
+------
+Run directly: python3 server.py
+The server will:
+1. Find an available port (starting from 8001)
+2. Export the port as SERVER_PORT
+3. Start the HTTP server
+4. Open the default browser (unless NO_BROWSER is set)
+
+Author: [Your Name]
+Version: 1.0.0
+License: [License Type]
+"""
+
 import os
 import json
 import logging
