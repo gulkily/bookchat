@@ -1,34 +1,33 @@
 #!/bin/bash
 
-# Check if pip3 is installed
-if ! command -v pip3 &> /dev/null; then
-    echo "pip3 is not installed. Please install Python3 and pip3 first."
+# Ensure Python3 is installed
+if ! command -v python3 &> /dev/null; then
+    echo "Python3 is not installed. Please install Python3 first."
     exit 1
 fi
 
-# Get list of installed packages
-installed_packages=$(pip3 freeze)
-missing_deps=false
+# Ensure python3-venv is installed
+if ! dpkg -s python3-venv &>/dev/null; then
+    echo "Installing python3-venv..."
+    sudo apt update && sudo apt install -y python3-venv
+fi
 
-while IFS= read -r line || [[ -n "$line" ]]; do
-    # Skip empty lines and comments
-    [[ -z "$line" || "$line" =~ ^#.*$ ]] && continue
-    
-    # Remove any version specifiers and whitespace
-    required_package=$(echo "$line" | sed 's/[<>=~].*//' | tr -d '[:space:]')
-    
-    # Check if package is in installed packages
-    if ! echo "$installed_packages" | grep -qi "^${required_package}=="; then
-        echo "Missing dependency: $required_package"
-        missing_deps=true
-    fi
-done < requirements.txt
+# Create virtual environment if it doesn't exist
+if [ ! -d "venv" ]; then
+    echo "Creating virtual environment..."
+    python3 -m venv venv
+fi
 
-if [ "$missing_deps" = true ]; then
-    echo "Installing missing dependencies..."
-    pip3 install -r requirements.txt
-else
-    echo "All dependencies already installed, skipping..."
+# Activate virtual environment
+source venv/bin/activate
+
+# Ensure pip is up to date
+pip install --upgrade pip
+
+# Install dependencies
+if [ -f "requirements.txt" ]; then
+    echo "Installing dependencies from requirements.txt..."
+    pip install --no-cache-dir -r requirements.txt
 fi
 
 # Kill any existing Python processes running server.py
@@ -38,7 +37,10 @@ pkill -f "python3 server.py"
 sleep 1
 
 # Start the server in the background
-python3 server.py &
+nohup python server.py &> server.log &
+
+# Deactivate virtual environment
+deactivate
 
 # Exit successfully
 exit 0
