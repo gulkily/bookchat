@@ -1,5 +1,78 @@
 #!/usr/bin/env python3
 
+"""
+BookChat Server - Main Server Implementation
+=========================================
+
+This module implements a full-featured HTTP server for the BookChat application,
+providing both API endpoints and static file serving capabilities.
+
+Key Components:
+-------------
+- ChatRequestHandler: Handles all HTTP requests (GET, POST, OPTIONS)
+- ChatServer: Main server class extending HTTPServer
+- Support functions for port detection and browser launching
+
+API Endpoints:
+------------
+- GET /messages: Retrieve all chat messages
+- POST /messages: Create a new chat message
+- GET /test_message: Test endpoint returning message format
+- GET /static/*: Serve static assets
+- GET /: Serve main application page
+
+Features:
+--------
+- Async request handling using asyncio
+- CORS support for cross-origin requests
+- Robust error handling and logging
+- Template rendering with basic conditional support
+- Static file serving with content type detection
+- WSL-aware browser launching
+- Automatic port selection
+- Graceful shutdown handling
+
+Configuration:
+------------
+Environment Variables:
+- DEBUG: Set to 'true' for verbose logging
+- NO_BROWSER: Set to prevent automatic browser launch
+- SERVER_PORT: (Exported) Contains selected server port
+
+Dependencies:
+-----------
+Standard Library:
+- http.server: Base HTTP server implementation
+- asyncio: Asynchronous I/O support
+- json: JSON parsing/serialization
+- logging: Application logging
+- os, sys: System operations
+- threading: Browser launch threading
+- pathlib: Path manipulation
+- urllib.parse: URL parsing
+- datetime: Timestamp generation
+- socket: Port availability checking
+- platform: OS detection
+- webbrowser: Browser launching
+
+Custom Modules:
+- server.storage.file_storage: Persistent storage
+- server.message_handler: Message processing
+
+Usage:
+-----
+Run directly:
+    $ python3 server.py
+
+Import and run programmatically:
+    from server import run_server
+    run_server()
+
+Author: BookChat Development Team
+Version: 1.0.0
+License: MIT
+"""
+
 import os
 import json
 import logging
